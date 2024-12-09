@@ -19,7 +19,7 @@
         saveState(updatedState);
         return updatedState;
     }
-    
+
     // Views and DOM handlers
     function cleanUpDates() {
         const dateElements = document.querySelectorAll('[data-region="event-list-content-date"]');
@@ -90,14 +90,23 @@
         container.appendChild(title);
 
         const closeButton = document.createElement('button');
-        closeButton.innerText = 'Close';
-        closeButton.style.marginBottom = '10px';
-        closeButton.style.backgroundColor = '#d9534f';
-        closeButton.style.color = '#fff';
+        closeButton.innerHTML = '&times;';
+        closeButton.style.position = 'absolute';
+        closeButton.style.top = '10px';
+        closeButton.style.right = '15px';
+        closeButton.style.backgroundColor = 'transparent';
+        closeButton.style.color = '#d9534f';
         closeButton.style.border = 'none';
-        closeButton.style.padding = '5px 10px';
+        closeButton.style.fontSize = '30px';
         closeButton.style.cursor = 'pointer';
-        closeButton.style.float = 'right';
+        closeButton.style.lineHeight = '1';
+        closeButton.style.fontWeight = 'bold';
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.color = '#c9302c';
+        });
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.color = '#d9534f';
+        });
         closeButton.addEventListener('click', () => {
             document.body.removeChild(container);
         });
