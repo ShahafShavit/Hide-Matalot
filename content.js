@@ -2,7 +2,7 @@
     'use strict';
 
     const STORAGE_KEY = 'courseExerciseVisibility';
-
+    //Data storage section
     function getSavedState() {
         return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
     }
@@ -19,7 +19,8 @@
         saveState(updatedState);
         return updatedState;
     }
-
+    
+    // Views and DOM handlers
     function cleanUpDates() {
         const dateElements = document.querySelectorAll('[data-region="event-list-content-date"]');
         dateElements.forEach(dateElement => {
@@ -106,23 +107,22 @@
         table.style.width = '100%';
         table.style.borderCollapse = 'collapse';
         table.style.marginTop = '10px';
-
         const headerRow = document.createElement('tr');
         headerRow.innerHTML = `
-            <th style="border: 1px solid #ccc; padding: 5px; text-align: left;">הסתר</th>
-            <th style="border: 1px solid #ccc; padding: 5px; text-align: left;">מטלה</th>
-            <th style="border: 1px solid #ccc; padding: 5px; text-align: left;">קורס</th>
+            <th style="border: 1px solid #ccc; padding: 5px; text-align: center;">קורס</th>
+            <th style="border: 1px solid #ccc; padding: 5px; text-align: center;">מטלה</th>
+            <th style="border: 1px solid #ccc; padding: 5px; text-align: center;">הסתר</th>
         `;
         table.appendChild(headerRow);
 
         pairs.forEach(({ courseName, exerciseName, item, uniqueKey }) => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
+                <td style="border: 1px solid #ccc; padding: 5px;">${courseName}</td>
+                <td style="border: 1px solid #ccc; padding: 5px;">${exerciseName}</td>
+                                <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
                     <input type="checkbox" ${savedState[uniqueKey] === false ? 'checked' : ''}>
                 </td>
-                <td style="border: 1px solid #ccc; padding: 5px;">${exerciseName}</td>
-                <td style="border: 1px solid #ccc; padding: 5px;">${courseName}</td>
             `;
 
             const checkbox = row.querySelector('input');
@@ -152,7 +152,7 @@
 
         const button = document.createElement('button');
         button.id = 'manage-pairs-button';
-        button.innerText = 'Manage Pairs';
+        button.innerText = 'ניהול תצוגת מטלות';
         button.style.position = 'fixed';
         button.style.bottom = '10px';
         button.style.left = '10px';
