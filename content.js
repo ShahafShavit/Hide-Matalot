@@ -174,7 +174,13 @@
         button.style.zIndex = '9999';
 
         button.addEventListener('click', () => {
-            displayTable(pairs);
+            const container = document.getElementById("table-management");
+            if (container) {
+                document.body.removeChild(container)
+            }
+            else {
+                displayTable(pairs);
+            }
         });
 
         document.body.appendChild(button);
