@@ -179,8 +179,19 @@
 
         document.body.appendChild(button);
     }
-
-    function init() {
+    function clickViewMoreButton() {
+        return new Promise(resolve => {
+            const btns = document.querySelectorAll(".btn.btn-secondary");
+            btns.forEach(element => {
+                if (element.innerText === "הצגת פעילויות נוספות") {
+                    element.click();
+                }
+            });
+            setTimeout(resolve, 1500);
+        });
+    }
+    async function init() {
+        await clickViewMoreButton();
         const pairs = extractCourseExercisePairs();
         const savedState = getSavedState();
         cleanUpState(pairs, savedState);
