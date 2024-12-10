@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-
+    let debugEnabled = false;
     function openDatabase() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open("ExerciseVisibilityDB", 1);
@@ -9,6 +9,11 @@
                 const db = request.result;
                 if (!db.objectStoreNames.contains("states")) {
                     db.createObjectStore("states", { keyPath: "id" });
+                }
+                if (!db.objectStoreNames.contains("settings")) {
+                    const settingStore = db.createObjectStore("settings", {autoIncrement: false});
+                    settingStore.put(false, "debug");
+                    settingStore.put(4, "initWaitTime");
                 }
             };
             request.onsuccess = function () {
@@ -47,22 +52,73 @@
     }
 
     async function saveState(state) {
-        console.log("Saving state to IndexedDB:", state);
+        debugLog("Saving state to IndexedDB:", state);
         try {
             await saveToIndexedDB(state);
-            console.log("State saved successfully to IndexedDB.");
+            debugLog("State saved successfully to IndexedDB.");
         } catch (error) {
             console.error("Error saving to IndexedDB:", error);
         }
     }
 
+
+
     function getSavedState() {
         return getFromIndexedDB().then(saved => {
-            console.log("Retrieved state from IndexedDB:", saved);
+            debugLog("Retrieved state from IndexedDB:", saved);
             return saved || {};
         });
     }
 
+    async function getSetting(key) {
+        debugLog(`Getting setting ${key} from DB`);
+        try {
+            const db = await openDatabase();
+            const transaction = db.transaction("settings", "readonly");
+            const store = transaction.objectStore("settings");
+            const request = store.get(key);
+    
+            return await new Promise((resolve, reject) => {
+                request.onsuccess = () => {
+                    debugLog(`Successfuly pulled ${key}: ${request.result} from DB`);
+                    resolve(request.result !== undefined ? request.result : null); // Return value or null if not found
+                };
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
+        } catch (error) {
+            console.error(`Error retrieving setting "${key}" from IndexedDB:`, error);
+            return null; // Return null in case of any error
+        }
+    }
+
+    
+    async function saveSetting(key, value) {
+        function saveSettingToIndexedDB(key, value) {
+            return openDatabase().then(db => {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction("settings", "readwrite");
+                    const store = transaction.objectStore("settings");
+                    const request = store.put(value, key); // Save value under the key
+                    request.onsuccess = function () {
+                        resolve(`Successfully saved key "${key}" with value.`);
+                    };
+                    request.onerror = function () {
+                        reject(`Failed to save key "${key}": ${request.error}`);
+                    };
+                });
+            });
+        }
+        debugLog(`Saving setting: "${key}":${value} to IndexedDB.`);
+        try {
+            await saveSettingToIndexedDB(key, value);
+            debugLog("Setting saved successfully to IndexedDB.");
+        } catch (error) {
+            console.error("Error saving to IndexedDB:", error);
+        }
+    }
+    // Views and DOM handlers
     function cleanUpDates() {
         const dateElements = document.querySelectorAll('[data-region="event-list-content-date"]');
         dateElements.forEach(dateElement => {
@@ -79,7 +135,7 @@
             }
         });
     }
-    // Views and DOM handlers
+
     async function cleanUpState(pairs) {
         const savedState = await getSavedState(); 
         const activeKeys = new Set(pairs.map(pair => pair.uniqueKey));
@@ -117,11 +173,16 @@
         return pairs;
     }
 
-    async function displayTable(pairs) {
+    
+    function debugLog(...args) {
+        if (debugEnabled) console.log(...args);
+    }
+
+    async function displayDialoge(pairs) {
         if (document.getElementById('table-management')) return;
-    
-        const savedState = await getSavedState(); 
-    
+
+        const savedState = await getSavedState();
+
         const container = document.createElement('div');
         container.id = 'table-management';
         container.style.position = 'fixed';
@@ -135,12 +196,35 @@
         container.style.maxHeight = '400px';
         container.style.overflowY = 'auto';
         container.style.textAlign = 'center';
-    
+
         const title = document.createElement('h4');
         title.innerText = 'בחר מטלות לביטול הצגתם';
         title.style.marginBottom = '10px';
         container.appendChild(title);
-    
+
+        // Add Debug Checkbox
+        const debugContainer = document.createElement('div');
+        debugContainer.style.textAlign = 'left';
+        debugContainer.style.fontSize = 'smaller';
+        debugContainer.style.position = 'absolute';
+        debugContainer.style.top = '16px';
+        debugContainer.style.left = '16px';
+        const debugLabel = document.createElement('label');
+        debugLabel.innerText = "Debug";
+        debugLabel.style.marginLeft = '5px';
+        const debugCheckbox = document.createElement('input');
+        debugCheckbox.type = 'checkbox';
+        debugCheckbox.checked = await getSetting("debug");//debugEnabled ?? false;
+        debugCheckbox.addEventListener('change', () => {
+            saveSetting("debug", debugCheckbox.checked);
+            debugEnabled = debugCheckbox.checked;
+            
+        });
+        debugContainer.appendChild(debugLabel);
+        debugContainer.appendChild(debugCheckbox);
+
+        container.appendChild(debugContainer);
+
         const closeButton = document.createElement('button');
         closeButton.innerHTML = '&times;';
         closeButton.style.position = 'absolute';
@@ -163,25 +247,28 @@
             document.body.removeChild(container);
         });
         container.appendChild(closeButton);
-    
+
         const table = document.createElement('table');
         table.style.width = '100%';
         table.style.borderCollapse = 'collapse';
         table.style.marginTop = '10px';
+        table.style.lineHeight = '1';
+        table.style.fontSize = '0.9rem';
         const headerRow = document.createElement('tr');
+        const padding = 2;
         headerRow.innerHTML = `
-            <th style="border: 1px solid #ccc; padding: 5px; text-align: center;">קורס</th>
-            <th style="border: 1px solid #ccc; padding: 5px; text-align: center;">מטלה</th>
-            <th style="border: 1px solid #ccc; padding: 5px; text-align: center;">הסתר</th>
+            <th style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">קורס</th>
+            <th style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">מטלה</th>
+            <th style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">הסתר</th>
         `;
         table.appendChild(headerRow);
-    
+
         pairs.forEach(({ courseName, exerciseName, item, uniqueKey }) => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td style="border: 1px solid #ccc; padding: 5px;">${courseName}</td>
-                <td style="border: 1px solid #ccc; padding: 5px;">${exerciseName}</td>
-                <td style="border: 1px solid #ccc; padding: 5px; text-align: center;">
+                <td style="border: 1px solid #ccc; padding: ${padding}px;">${courseName}</td>
+                <td style="border: 1px solid #ccc; padding: ${padding}px;">${exerciseName}</td>
+                <td style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">
                     <input type="checkbox" ${savedState[uniqueKey] === false ? 'checked' : ''}>
                 </td>
             `;
@@ -203,7 +290,7 @@
         container.appendChild(table);
         document.body.appendChild(container);
     }
-    
+
     function addManagementButton(pairs) {
         if (document.getElementById('manage-pairs-button')) return;
         const button = document.createElement('button');
@@ -226,7 +313,7 @@
                 document.body.removeChild(container)
             }
             else {
-                displayTable(pairs);
+                displayDialoge(pairs);
             }
         });
         document.body.appendChild(button);
@@ -240,7 +327,7 @@
             const buttons = document.querySelectorAll(".btn.btn-secondary");
             for (const button of buttons) {
                 if (button.innerText.trim() === targetText) {
-                    console.log(`Found button with text "${targetText}". Clicking...`);
+                    debugLog(`Found button with text "${targetText}". Clicking...`);
                     button.click();
                     found = true;
                     break;
@@ -248,7 +335,7 @@
             }
 
             if (!found) {
-                console.log("No 'View More Events' button found.");
+                debugLog("No 'View More Events' button found.");
                 break;
             }
             else {
@@ -259,27 +346,28 @@
 
     async function init() {
         try {
-            const timeoutSeconds = 2
-            console.log(`Waiting for ${timeoutSeconds} seconds before starting...`);
+            const timeoutSeconds = await getSetting("initWaitTime");
+            debugEnabled = await getSetting("debug");
+            debugLog(`Waiting for ${timeoutSeconds} seconds before starting...`);
             await new Promise(resolve => setTimeout(resolve, timeoutSeconds * 1000)); // Initial delay
 
-            console.log("Waiting for 'View More Events' buttons to complete...");
+            debugLog("Waiting for 'View More Events' buttons to complete...");
             await clickViewMoreButton(); // Ensure all "View More" actions are done
-            
+
             await new Promise(resolve => setTimeout(resolve, 1000));
-            console.log("Extracting course-exercise pairs...");
+            debugLog("Extracting course-exercise pairs...");
             const pairs = await extractCourseExercisePairs();
-            console.log(pairs);
-            console.log("Fetching saved state...");
+            debugLog(`Fetched total of ${pairs.length} assingnments.`);
+            debugLog("Fetching saved state...");
             const savedState = await getSavedState();
 
-            console.log("Cleaning up state...");
+            debugLog("Cleaning up state...");
             cleanUpState(pairs, savedState);
 
-            console.log("Cleaning up /dates/...");
+            debugLog("Cleaning up /dates/...");
             cleanUpDates();
 
-            console.log("Adding management button...");
+            debugLog("Adding management button...");
             addManagementButton(pairs);
         } catch (error) {
             console.error("Initialization error:", error);
