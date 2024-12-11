@@ -146,10 +146,10 @@
         return updatedState;
     }
 
-    async function extractCourseExercisePairs() {
+    async function extractCourseExercisePairs(currentState) {
         const items = document.querySelectorAll(".list-group-item.timeline-event-list-item");
         const pairs = [];
-        const savedState = await getSavedState(); 
+        let savedState = currentState; 
 
         items.forEach(item => {
             const courseNameElement = item.querySelector(".event-name-container small");
@@ -159,7 +159,7 @@
                 const courseName = courseNameElement.innerText.trim().replace("יש להגיש את 'מטלה' · ", "");
                 const exerciseName = exerciseNameElement.innerText.trim();
                 const uniqueKey = `${courseName}::${exerciseName}`;
-
+                //console.log(savedState);
                 if (savedState[uniqueKey] === false) {
                     item.style.display = 'none';
                 } else {
@@ -181,15 +181,15 @@
             let callerLine = caller.split("/");
             callerLine = callerLine[callerLine.length - 1].replace(")","");
             // Include the caller's location in the log
+            //console.trace("State retrieval trace");
             console.log(`[Debug] (${callerLine}):`, ...args);
         }
     }
 
     async function displayDialoge(pairs) {
         if (document.getElementById('table-management')) return;
-
-        const savedState = await getSavedState();
-
+        
+        const currentState = await getSavedState();
         const container = document.createElement('div');
         container.id = 'table-management';
         container.style.position = 'fixed';
@@ -276,7 +276,7 @@
                 <td style="border: 1px solid #ccc; padding: ${padding}px;">${courseName}</td>
                 <td style="border: 1px solid #ccc; padding: ${padding}px;">${exerciseName}</td>
                 <td style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">
-                    <input type="checkbox" ${savedState[uniqueKey] === false ? 'checked' : ''}>
+                    <input type="checkbox" ${currentState[uniqueKey] === false ? 'checked' : ''}>
                 </td>
             `;
             const checkbox = row.querySelector('input');
@@ -284,12 +284,12 @@
                 const isChecked = checkbox.checked;
                 if (isChecked) {
                     item.style.display = 'none';
-                    savedState[uniqueKey] = false;
+                    currentState[uniqueKey] = false;
                 } else {
                     item.style.display = '';
-                    delete savedState[uniqueKey];
+                    delete currentState[uniqueKey];
                 }
-                await saveState(savedState);
+                await saveState(currentState);
                 cleanUpDates(); // Re-evaluate dates after visibility change
             });
             table.appendChild(row);
@@ -355,31 +355,43 @@
         try {
             const timeoutSeconds = await getSetting("initWaitTime");
             debugEnabled = await getSetting("debug");
-            
             if (debugEnabled) debugLog("Debug mode is enabled. You can disable it in the dialoge.");
-            
+            debugLog("Fetching Init saved state...");
+            let currentState = await getSavedState();
+
             debugLog(`Waiting for ${timeoutSeconds} seconds before starting...`);
             await new Promise(resolve => setTimeout(resolve, timeoutSeconds * 1000)); // Initial delay
 
-            await clickViewMoreButton();
             debugLog("Waiting for 'View More Events' buttons to complete...");
+            await clickViewMoreButton();
             await new Promise(resolve => setTimeout(resolve, 1500));
 
             debugLog("Extracting course-exercise pairs...");
-            const pairs = await extractCourseExercisePairs();
-            debugLog(`Fetched total of ${pairs.length} assingnments.`);
+            let pairs = await extractCourseExercisePairs(currentState);
 
-            debugLog("Fetching saved state...");
-            const savedState = await getSavedState();
+            debugLog(`Fetched total of ${pairs.length} assingnments.`);
+            debugLog(`Verifying integrity of pulling of assignments...`);
+            await new Promise(resolve => setTimeout(resolve, 800));
+            const pairsCheck = await extractCourseExercisePairs(currentState);
+            if (pairs.length < pairsCheck.length) {
+                debugLog("Integrity check failed, using lastest pull.");
+                pairs = pairsCheck;
+            }
+            else {
+                debugLog("Integrity verification passed...");
+            }
+
+            
+            
 
             debugLog("Cleaning up state...");
-            cleanUpState(pairs, savedState);
+            cleanUpState(pairs, currentState);
 
             debugLog("Cleaning up /dates/...");
             cleanUpDates();
 
             debugLog("Adding management button...");
-            addManagementButton(pairs);
+            addManagementButton(pairs, currentState);
         } catch (error) {
             console.error("Initialization error:", error);
         }
