@@ -175,7 +175,14 @@
 
     
     function debugLog(...args) {
-        if (debugEnabled) console.log(...args);
+        if (debugEnabled) {
+            const stack = new Error().stack;
+            const caller = stack.split("\n")[2]?.trim() || "Unknown line";
+            let callerLine = caller.split("/");
+            callerLine = callerLine[callerLine.length - 1].replace(")","");
+            // Include the caller's location in the log
+            console.log(`[Debug] (${callerLine}):`, ...args);
+        }
     }
 
     async function displayDialoge(pairs) {
@@ -348,16 +355,20 @@
         try {
             const timeoutSeconds = await getSetting("initWaitTime");
             debugEnabled = await getSetting("debug");
+            
+            if (debugEnabled) debugLog("Debug mode is enabled. You can disable it in the dialoge.");
+            
             debugLog(`Waiting for ${timeoutSeconds} seconds before starting...`);
             await new Promise(resolve => setTimeout(resolve, timeoutSeconds * 1000)); // Initial delay
 
+            await clickViewMoreButton();
             debugLog("Waiting for 'View More Events' buttons to complete...");
-            await clickViewMoreButton(); // Ensure all "View More" actions are done
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
-            await new Promise(resolve => setTimeout(resolve, 1000));
             debugLog("Extracting course-exercise pairs...");
             const pairs = await extractCourseExercisePairs();
             debugLog(`Fetched total of ${pairs.length} assingnments.`);
+
             debugLog("Fetching saved state...");
             const savedState = await getSavedState();
 
