@@ -152,20 +152,25 @@ jobs:
           echo "::add-mask::$ACCESS_TOKEN"
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
 
-      - name: Submit for review (Chrome Web Store API v2)
+      # Publish API: https://developer.chrome.com/docs/webstore/api/reference/rest/v2/publishers.items/publish
+      # DEFAULT_PUBLISH = after review passes, release goes live (not STAGED_PUBLISH, which needs a second manual step).
+      # Visibility (public vs trusted testers) is whatever you set under Distribution in the Developer Dashboard;
+      # set it to Public there so this submission targets the public listing.
+      - name: Submit for public review (Chrome Web Store API v2)
         run: |
           URL="https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CHROME_PUBLISHER_ID }}/items/${{ secrets.CHROME_EXTENSION_ID }}:publish"
+          BODY='{"publishType":"DEFAULT_PUBLISH"}'
           HTTP_CODE=$(curl -sS -o publish-response.json -w "%{http_code}" -X POST "$URL" \
             -H "Authorization: Bearer ${{ steps.auth.outputs.ACCESS_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{}')
+            -d "$BODY")
 
           echo "HTTP status: $HTTP_CODE"
           cat publish-response.json
           echo
 
           if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            echo "Publish request failed. Fix store listing / privacy in the Developer Dashboard if the body mentions validation."
+            echo "Publish failed. Check Developer Dashboard: Store listing, Privacy, Distribution/visibility (Public), and any red banners."
             exit 1
           fi
 
