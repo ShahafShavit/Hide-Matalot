@@ -1,0 +1,144 @@
+name: Deploy to Chrome Web Store
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check-version:
+    name: Check for new version
+    runs-on: ubuntu-latest
+    outputs:
+      needs_deploy: ${{ steps.compare_versions.outputs.needs_deploy }}
+      local_version: ${{ steps.get_local_version.outputs.local_version }}
+      cloud_version: ${{ steps.get_cloud_version.outputs.cloud_version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update -qq && sudo apt-get install -y jq
+
+      - name: Get local version
+        id: get_local_version
+        run: |
+          LOCAL_VERSION=$(jq -r .version manifest.json)
+          echo "Local version (from manifest.json): $LOCAL_VERSION"
+          echo "local_version=$LOCAL_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate access token
+        id: auth
+        run: |
+          RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
+            -d "client_id=${{ secrets.CHROME_CLIENT_ID }}" \
+            -d "client_secret=${{ secrets.CHROME_CLIENT_SECRET }}" \
+            -d "refresh_token=${{ secrets.CHROME_REFRESH_TOKEN }}" \
+            -d "grant_type=refresh_token")
+
+          ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r '.access_token')
+
+          if [ "$ACCESS_TOKEN" = "null" ] || [ -z "$ACCESS_TOKEN" ]; then
+            echo "Failed to get access token. Response: $RESPONSE"
+            exit 1
+          fi
+
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch published version (Chrome Web Store API v2)
+        id: get_cloud_version
+        run: |
+          URL="https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CHROME_PUBLISHER_ID }}/items/${{ secrets.CHROME_EXTENSION_ID }}:fetchStatus"
+          RESPONSE=$(curl -s -H "Authorization: Bearer ${{ steps.auth.outputs.ACCESS_TOKEN }}" "$URL")
+
+          VERSION=$(echo "$RESPONSE" | jq -r '.publishedItemRevisionStatus.distributionChannels[0].crxVersion')
+
+          if [ "$VERSION" = "null" ] || [ -z "$VERSION" ]; then
+            echo "Could not read published version. Response: $RESPONSE"
+            exit 1
+          fi
+
+          echo "Cloud version: $VERSION"
+          echo "cloud_version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Compare versions
+        id: compare_versions
+        run: |
+          LOCAL_VER="${{ steps.get_local_version.outputs.local_version }}"
+          CLOUD_VER="${{ steps.get_cloud_version.outputs.cloud_version }}"
+
+          if [ "$LOCAL_VER" != "$CLOUD_VER" ]; then
+            echo "New version: local=$LOCAL_VER cloud=$CLOUD_VER — deploy will run."
+            echo "needs_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Same version ($LOCAL_VER). Skipping deploy."
+            echo "needs_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: Build and publish extension
+    runs-on: ubuntu-latest
+    needs: check-version
+    if: needs.check-version.outputs.needs_deploy == 'true' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Log context
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Publishing ${{ needs.check-version.outputs.local_version }} (store had ${{ needs.check-version.outputs.cloud_version }})"
+
+      - name: Generate changelog
+        run: |
+          git log --pretty=format:"%H | %B%n---" -50 HEAD > changelog.txt
+          echo "Changelog lines: $(wc -l < changelog.txt)"
+
+      - name: Create ZIP
+        run: |
+          zip -r extension.zip . -x ".git/*" ".github/*" "*.ps1"
+          ls -la extension.zip
+
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: changelog.txt
+          retention-days: 30
+
+      - name: Upload ZIP (debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip-build
+          path: extension.zip
+          retention-days: 7
+
+      - name: Upload and publish to Chrome Web Store
+        uses: ShahafShavit/chrome-extension-upload@master
+        with:
+          file-path: extension.zip
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          publish: true
+          # Use "default" to submit for public release; "trustedTesters" for trusted tester channel only.
+          publish-target: trustedTesters
+
+  log-skip:
+    name: Skipped (same version as store)
+    runs-on: ubuntu-latest
+    needs: check-version
+    if: needs.check-version.outputs.needs_deploy == 'false'
+
+    steps:
+      - name: Log skip
+        run: |
+          echo "Deploy skipped: manifest version matches the store."
+          echo "Local / store version: ${{ needs.check-version.outputs.local_version }}"
