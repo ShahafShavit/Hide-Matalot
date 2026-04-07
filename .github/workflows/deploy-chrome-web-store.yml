@@ -119,60 +119,19 @@ jobs:
           path: extension.zip
           retention-days: 7
 
-      # Upload uses legacy v1.1 (this action); publish via v1.1 often returns 400 for newer listings.
-      - name: Upload package to Chrome Web Store (no publish)
-        uses: ShahafShavit/chrome-extension-upload@master
+      # With publisher-id, ShahafShavit/chrome-extension-upload uses API v2 (upload + publish).
+      # Publish uses default publishType (DEFAULT_PUBLISH). Visibility: Developer Dashboard only.
+      # v1.1 fallback if publisher-id is omitted — not recommended after 2026-10-15.
+      - name: Upload and publish (Chrome Web Store API v2)
+        uses: ShahafShavit/chrome-extension-upload@v1.0.0
         with:
           file-path: extension.zip
+          publisher-id: ${{ secrets.CHROME_PUBLISHER_ID }}
           extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
           client-id: ${{ secrets.CHROME_CLIENT_ID }}
           client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
           refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
-          publish: false
-
-      - name: Install jq
-        run: sudo apt-get update -qq && sudo apt-get install -y jq
-
-      - name: OAuth access token (for API v2 publish)
-        id: auth
-        run: |
-          RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
-            -d "client_id=${{ secrets.CHROME_CLIENT_ID }}" \
-            -d "client_secret=${{ secrets.CHROME_CLIENT_SECRET }}" \
-            -d "refresh_token=${{ secrets.CHROME_REFRESH_TOKEN }}" \
-            -d "grant_type=refresh_token")
-
-          ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r '.access_token')
-
-          if [ "$ACCESS_TOKEN" = "null" ] || [ -z "$ACCESS_TOKEN" ]; then
-            echo "Failed to get access token. Response: $RESPONSE"
-            exit 1
-          fi
-
-          echo "::add-mask::$ACCESS_TOKEN"
-          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
-
-      # Publish API: https://developer.chrome.com/docs/webstore/api/reference/rest/v2/publishers.items/publish
-      # DEFAULT_PUBLISH = after review passes, release goes live (not STAGED_PUBLISH, which needs a second manual step).
-      # Visibility (public vs trusted testers) is whatever you set under Distribution in the Developer Dashboard;
-      # set it to Public there so this submission targets the public listing.
-      - name: Submit for public review (Chrome Web Store API v2)
-        run: |
-          URL="https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CHROME_PUBLISHER_ID }}/items/${{ secrets.CHROME_EXTENSION_ID }}:publish"
-          BODY='{"publishType":"DEFAULT_PUBLISH"}'
-          HTTP_CODE=$(curl -sS -o publish-response.json -w "%{http_code}" -X POST "$URL" \
-            -H "Authorization: Bearer ${{ steps.auth.outputs.ACCESS_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "$BODY")
-
-          echo "HTTP status: $HTTP_CODE"
-          cat publish-response.json
-          echo
-
-          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            echo "Publish failed. Check Developer Dashboard: Store listing, Privacy, Distribution/visibility (Public), and any red banners."
-            exit 1
-          fi
+          publish: true
 
   log-skip:
     name: Skipped (same version as store)
