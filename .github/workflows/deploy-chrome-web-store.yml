@@ -123,7 +123,7 @@ jobs:
       # Publish uses default publishType (DEFAULT_PUBLISH). Visibility: Developer Dashboard only.
       # v1.1 fallback if publisher-id is omitted — not recommended after 2026-10-15.
       - name: Upload and publish (Chrome Web Store API v2)
-        uses: ShahafShavit/chrome-extension-upload@v1.0.0
+        uses: ShahafShavit/chrome-extension-upload@v1
         with:
           file-path: extension.zip
           publisher-id: ${{ secrets.CHROME_PUBLISHER_ID }}
