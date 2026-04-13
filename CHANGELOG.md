@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3] - 13.04.2026
+### Added
+- Full assignment notification feature with per-assignment settings (Time and date selection; Runs when in background, no need for Moodle page to be open).
+- Google Calendar add button for each assignment.
+
+### Changed
+- Management button now appears early in loading state and activates after data load.
+
 ## [1.2] - 11.12.2024
 ### Added
 - Verbose logging in debug mode
