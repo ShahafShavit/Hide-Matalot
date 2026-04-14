@@ -14,7 +14,7 @@
     "content_scripts": [
     {
       "matches": [
-        "*://moodle.ruppin.ac.il/my*"
+        "*://moodle.*/my*"
       ],
       "css": [
         "content/ui/hide-matalot.css"
