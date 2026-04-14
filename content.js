@@ -632,7 +632,7 @@
         container.style.textAlign = 'center';
 
         const title = document.createElement('h4');
-        title.innerText = 'בחר מטלות לביטול הצגתם';
+        title.innerText = 'בחר מטלות להסתרה';
         title.style.marginBottom = '10px';
         container.appendChild(title);
 
