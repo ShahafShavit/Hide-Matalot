@@ -1,6 +1,8 @@
 (function () {
     'use strict';
 
+    const { MESSAGE_TYPES } = globalThis.HideMatalotMessaging;
+
     let debugEnabled = false;
     let managementPairs = [];
     function openDatabase() {
@@ -150,12 +152,13 @@
             };
 
             const result = await sendRuntimeMessage({
-                type: 'SCHEDULE_ASSIGNMENT_NOTIFICATION',
+                type: MESSAGE_TYPES.SCHEDULE_ASSIGNMENT_NOTIFICATION,
                 notification: payload
             });
 
             if (!result?.success) {
-                throw new Error(result?.error || 'Failed to schedule notification');
+                const suffix = result?.operationId ? ` (${result.operationId})` : '';
+                throw new Error((result?.error || 'Failed to schedule notification') + suffix);
             }
 
             debugLog('Notification scheduled:', id);
@@ -168,12 +171,13 @@
 
     async function getAllNotifications() {
         try {
-            const result = await sendRuntimeMessage({ type: 'GET_SCHEDULED_NOTIFICATIONS' });
+            const result = await sendRuntimeMessage({ type: MESSAGE_TYPES.GET_SCHEDULED_NOTIFICATIONS });
             if (!result?.success) {
                 return [];
             }
 
-            return Array.isArray(result.notifications) ? result.notifications : [];
+            const raw = result.data?.notifications;
+            return Array.isArray(raw) ? raw : [];
         } catch (error) {
             console.error('Error fetching all notifications:', error);
             return [];
@@ -188,12 +192,13 @@
     async function deleteNotification(notificationId) {
         try {
             const result = await sendRuntimeMessage({
-                type: 'DELETE_ASSIGNMENT_NOTIFICATION',
+                type: MESSAGE_TYPES.DELETE_ASSIGNMENT_NOTIFICATION,
                 notificationId
             });
 
             if (!result?.success) {
-                throw new Error(result?.error || 'Failed to delete notification');
+                const suffix = result?.operationId ? ` (${result.operationId})` : '';
+                throw new Error((result?.error || 'Failed to delete notification') + suffix);
             }
 
             debugLog('Notification deleted:', notificationId);
@@ -273,7 +278,7 @@
                     const allDateHeaders = wrapper.querySelectorAll('[data-region="event-list-content-date"]');
                     for (let i = 0; i < allDateHeaders.length; i++) {
                         const currentList = allDateHeaders[i].nextElementSibling;
-                        if (currentList && currentList.contains(item)) {
+                        if (currentList?.contains(item)) {
                             deadline = parseInt(allDateHeaders[i].getAttribute('data-timestamp'), 10);
                             break;
                         }
@@ -758,18 +763,22 @@
                 // Send message to background service worker to create notification
                 chrome.runtime.sendMessage(
                     {
-                        type: 'CREATE_NOTIFICATION',
+                        type: MESSAGE_TYPES.CREATE_NOTIFICATION,
                         title: 'תזכורת להגשת מטלה',
                         message: message,
                         iconUrl: chrome.runtime.getURL('hide128.png')
                     },
                     (response) => {
-                        if (response && response.success) {
-                            console.log("[Content] Notification created with ID:", response.notificationId);
-                            debugLog(`Notification created: ${response.notificationId}`);
+                        if (response?.success) {
+                            const notificationId = response.data?.notificationId;
+                            console.log("[Content] Notification created with ID:", notificationId);
+                            debugLog(`Notification created: ${notificationId}`);
                         } else {
-                            console.error("[Content] Notification failed:", response?.error);
-                            debugLog(`Notification failed: ${response?.error}`);
+                            const detail = response?.operationId
+                                ? `${response?.error} (${response.operationId})`
+                                : response?.error;
+                            console.error("[Content] Notification failed:", detail);
+                            debugLog(`Notification failed: ${detail}`);
                         }
                     }
                 );

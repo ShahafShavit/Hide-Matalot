@@ -17,6 +17,7 @@
         "*://moodle.ruppin.ac.il/my*"
       ],
       "js": [
+        "shared/messageContract.js",
         "content.js"
       ]
     }
