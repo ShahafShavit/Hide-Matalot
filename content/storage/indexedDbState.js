@@ -16,9 +16,6 @@
                     settingStore.put(false, 'debug');
                     settingStore.put(4, 'initWaitTime');
                 }
-                if (!db.objectStoreNames.contains('notifications')) {
-                    db.createObjectStore('notifications', { keyPath: 'id' });
-                }
             };
             request.onsuccess = function () {
                 resolve(request.result);

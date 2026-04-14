@@ -9,6 +9,8 @@
             responseSuccess,
             responseError,
             computeReminderTimestamp,
+            buildScheduleSlotId,
+            replaceScheduledNotificationSlot,
             getScheduledNotifications,
             setScheduledNotifications,
             scheduleAlarm,
@@ -46,13 +48,11 @@
                     return;
                 }
 
-                const notifications = await getScheduledNotifications();
-                const nextNotification = { ...payload, triggerAt };
-                notifications.push(nextNotification);
-                await setScheduledNotifications(notifications);
-                await scheduleAlarm(nextNotification);
+                const slotId = buildScheduleSlotId(payload);
+                const nextNotification = { ...payload, id: slotId, triggerAt };
+                await replaceScheduledNotificationSlot(slotId, nextNotification);
 
-                sendResponse(responseSuccess({ triggerAt }));
+                sendResponse(responseSuccess({ triggerAt, notificationId: slotId }));
             })().catch(error => {
                 console.error('[Background Worker]', operationId, 'Failed to schedule notification:', error);
                 sendResponse(responseError(String(error), operationId));

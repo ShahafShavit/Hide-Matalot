@@ -155,7 +155,7 @@
             }
 
             debug().log('Cleaning up state...');
-            cleanUpState(pairs);
+            await cleanUpState(pairs);
 
             debug().log('Cleaning up /dates/...');
             parser().cleanUpDates();

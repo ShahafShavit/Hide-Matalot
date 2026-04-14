@@ -19,10 +19,12 @@
 
     async function saveNotification(notification, assignment) {
         try {
-            const id = `${notification.assignmentKey}::${notification.daysBeforeDeadline}::${notification.notificationHour || DEFAULT_NOTIFICATION_HOUR}::${Date.now()}`;
+            const hour = notification.notificationHour || DEFAULT_NOTIFICATION_HOUR;
+            const id = `${notification.assignmentKey}::${notification.daysBeforeDeadline}::${hour}`;
             const payload = {
                 ...notification,
                 id,
+                notificationHour: hour,
                 courseName: assignment.courseName,
                 exerciseName: assignment.exerciseName,
                 deadline: assignment.deadline,

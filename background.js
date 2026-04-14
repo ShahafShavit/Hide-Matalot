@@ -18,7 +18,7 @@ const {
     validateGetScheduledNotifications
 } = globalThis.HideMatalotMessaging;
 
-const { computeReminderTimestamp } = globalThis.HideMatalotReminderTime;
+const { computeReminderTimestamp, DEFAULT_NOTIFICATION_HOUR } = globalThis.HideMatalotReminderTime;
 const createMessageHandlers = globalThis.HideMatalotBackgroundMessageHandlers;
 
 const STORAGE_KEY = 'scheduledNotifications';
@@ -78,8 +78,41 @@ function getAlarmName(notificationId) {
     return `${ALARM_PREFIX}${notificationId}`;
 }
 
+/** Legacy ids were `${slotId}::${Date.now()}`; normalize to slot id for deduping. */
+function normalizeScheduledNotificationRecordId(id) {
+    if (typeof id !== 'string' || !id) {
+        return id;
+    }
+    const parts = id.split('::');
+    const last = parts[parts.length - 1];
+    if (parts.length >= 4 && /^\d{10,}$/.test(last)) {
+        return parts.slice(0, -1).join('::');
+    }
+    return id;
+}
+
+function buildScheduleSlotId(payload) {
+    const hour =
+        payload.notificationHour != null && payload.notificationHour !== ''
+            ? String(payload.notificationHour)
+            : DEFAULT_NOTIFICATION_HOUR;
+    return `${payload.assignmentKey}::${payload.daysBeforeDeadline}::${hour}`;
+}
+
 async function scheduleAlarm(notification) {
     chrome.alarms.create(getAlarmName(notification.id), { when: notification.triggerAt });
+}
+
+async function replaceScheduledNotificationSlot(slotId, nextNotification) {
+    const notifications = await getScheduledNotifications();
+    const removed = notifications.filter(n => normalizeScheduledNotificationRecordId(n.id) === slotId);
+    const kept = notifications.filter(n => normalizeScheduledNotificationRecordId(n.id) !== slotId);
+    for (const old of removed) {
+        await chrome.alarms.clear(getAlarmName(old.id));
+    }
+    kept.push(nextNotification);
+    await setScheduledNotifications(kept);
+    await scheduleAlarm(nextNotification);
 }
 
 async function removeScheduledNotification(notificationId) {
@@ -93,8 +126,23 @@ async function syncAlarmsFromStorage() {
     const notifications = await getScheduledNotifications();
     const now = Date.now();
     const active = notifications.filter(notification => notification.triggerAt > now);
-    await setScheduledNotifications(active);
-    for (const notification of active) {
+    const bySlot = new Map();
+    for (const n of active) {
+        const slot = normalizeScheduledNotificationRecordId(n.id);
+        const prev = bySlot.get(slot);
+        if (!prev || n.triggerAt >= prev.triggerAt) {
+            bySlot.set(slot, n);
+        }
+    }
+    const deduped = Array.from(bySlot.values());
+    const keptIds = new Set(deduped.map(n => n.id));
+    for (const n of active) {
+        if (!keptIds.has(n.id)) {
+            await chrome.alarms.clear(getAlarmName(n.id));
+        }
+    }
+    await setScheduledNotifications(deduped);
+    for (const notification of deduped) {
         await scheduleAlarm(notification);
     }
 }
@@ -108,6 +156,8 @@ const MESSAGE_HANDLERS = createMessageHandlers({
     responseSuccess,
     responseError,
     computeReminderTimestamp,
+    buildScheduleSlotId,
+    replaceScheduledNotificationSlot,
     getScheduledNotifications,
     setScheduledNotifications,
     scheduleAlarm,
