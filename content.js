@@ -1,6 +1,11 @@
 (function () {
     'use strict';
 
+    // Check if this is a Moodle site
+    if (!window.location.hostname.includes('moodle.')) {
+        return;
+    }
+
     let debugEnabled = false;
     let managementPairs = [];
     function openDatabase() {
@@ -725,7 +730,7 @@
                     return;
                 }
 
-                openGoogleCalendarEvent(courseName, exerciseName, deadline, time);
+                showCalendarMenu(courseName, exerciseName, deadline, time, calendarBtn);
             });
             const checkbox = row.querySelector('input');
             checkbox.addEventListener('change', async () => {
@@ -813,34 +818,193 @@
         return `https://calendar.google.com/calendar/render?${query.toString()}`;
     }
 
+    function buildMicrosoftCalendarUrl(courseName, exerciseName, deadline, time) {
+        const dueDate = new Date(deadline * 1000);
+        const [hours, minutes] = (time || '23:59').split(':').map(value => parseInt(value, 10));
+
+        if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+            dueDate.setHours(hours, minutes, 0, 0);
+        }
+
+        const title = `דדליין הגשת: ${exerciseName}, ${courseName}`;
+        const body = `מטלה מתוך Moodle\nקורס: ${courseName}\nמטלה: ${exerciseName}`;
+        
+        const query = new URLSearchParams({
+            subject: title,
+            startdt: dueDate.toISOString(),
+            enddt: new Date(dueDate.getTime() + 60 * 60 * 1000).toISOString(),
+            body: body,
+            location: 'Moodle'
+        });
+
+        return `https://outlook.live.com/calendar/0/deeplink/compose?${query.toString()}`;
+    }
+
+    function showCalendarMenu(courseName, exerciseName, deadline, time, button) {
+        // Remove existing menu if any
+        const existingMenu = document.querySelector('#calendar-menu-popup');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+
+        // Create menu
+        const menu = document.createElement('div');
+        menu.id = 'calendar-menu-popup';
+        menu.style.position = 'fixed';
+        menu.style.backgroundColor = '#fff';
+        menu.style.border = '1px solid #ccc';
+        menu.style.borderRadius = '5px';
+        menu.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+        menu.style.zIndex = '10001';
+        menu.style.minWidth = '200px';
+        menu.style.padding = '8px 0';
+
+        const rect = button.getBoundingClientRect();
+        menu.style.top = (rect.bottom + 5) + 'px';
+        menu.style.left = (rect.left - 50) + 'px';
+
+        // Google Calendar option
+        const googleCalOption = document.createElement('div');
+        googleCalOption.style.padding = '10px 15px';
+        googleCalOption.style.cursor = 'pointer';
+        googleCalOption.style.fontSize = '14px';
+        googleCalOption.style.color = '#333';
+        googleCalOption.innerText = '📅 Google Calendar';
+        googleCalOption.addEventListener('mouseover', () => {
+            googleCalOption.style.backgroundColor = '#f0f0f0';
+        });
+        googleCalOption.addEventListener('mouseout', () => {
+            googleCalOption.style.backgroundColor = 'transparent';
+        });
+        googleCalOption.addEventListener('click', () => {
+            openGoogleCalendarEvent(courseName, exerciseName, deadline, time);
+            menu.remove();
+        });
+
+        // Microsoft Outlook option
+        const outlookOption = document.createElement('div');
+        outlookOption.style.padding = '10px 15px';
+        outlookOption.style.cursor = 'pointer';
+        outlookOption.style.fontSize = '14px';
+        outlookOption.style.color = '#333';
+        outlookOption.innerText = '📅 Microsoft Outlook';
+        outlookOption.addEventListener('mouseover', () => {
+            outlookOption.style.backgroundColor = '#f0f0f0';
+        });
+        outlookOption.addEventListener('mouseout', () => {
+            outlookOption.style.backgroundColor = 'transparent';
+        });
+        outlookOption.addEventListener('click', () => {
+            openMicrosoftCalendarEvent(courseName, exerciseName, deadline, time);
+            menu.remove();
+        });
+
+        menu.appendChild(googleCalOption);
+        menu.appendChild(outlookOption);
+
+        document.body.appendChild(menu);
+
+        // Close menu when clicking outside
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target) && e.target !== button) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        document.addEventListener('click', closeMenu);
+    }
+
     function openGoogleCalendarEvent(courseName, exerciseName, deadline, time) {
         const url = buildGoogleCalendarUrl(courseName, exerciseName, deadline, time);
         debugLog(`Opening Google Calendar URL for ${exerciseName}`);
         window.open(url, '_blank', 'noopener,noreferrer');
     }
 
-    function addManagementButton() {
-        if (document.getElementById('manage-pairs-button')) return;
-        const button = document.createElement('button');
-        button.id = 'manage-pairs-button';
-        button.innerText = 'ניהול תצוגת מטלות (טוען...)';
-        button.style.position = 'fixed';
-        button.style.bottom = '10px';
-        button.style.left = '10px';
-        button.style.backgroundColor = '#6c757d';
-        button.style.color = '#fff';
-        button.style.border = 'none';
-        button.style.padding = '5px 10px';
-        button.style.cursor = 'not-allowed';
-        button.style.borderRadius = '3px';
-        button.style.zIndex = '9999';
-        button.disabled = true;
+    function openMicrosoftCalendarEvent(courseName, exerciseName, deadline, time) {
+        const url = buildMicrosoftCalendarUrl(courseName, exerciseName, deadline, time);
+        debugLog(`Opening Microsoft Outlook URL for ${exerciseName}`);
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
 
-        button.addEventListener('click', () => {
-            // Disabled while loading.
+    function ensureFloatingControls() {
+        let container = document.getElementById('floating-controls-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'floating-controls-container';
+            container.style.position = 'fixed';
+            container.style.bottom = '10px';
+            container.style.right = '10px';
+            container.style.display = 'flex';
+            container.style.gap = '8px';
+            container.style.alignItems = 'center';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+        }
+
+        let manageButton = document.getElementById('manage-pairs-button');
+        if (!manageButton) {
+            manageButton = document.createElement('button');
+            manageButton.id = 'manage-pairs-button';
+            manageButton.innerText = 'ניהול תצוגת מטלות (טוען...)';
+            manageButton.style.backgroundColor = '#6c757d';
+            manageButton.style.color = '#fff';
+            manageButton.style.border = 'none';
+            manageButton.style.padding = '5px 10px';
+            manageButton.style.cursor = 'not-allowed';
+            manageButton.style.borderRadius = '3px';
+            manageButton.disabled = true;
+            manageButton.addEventListener('click', () => {
+                // Disabled while loading.
+            });
+            container.appendChild(manageButton);
+        }
+
+        let timelineButton = document.getElementById('jump-to-timeline-button');
+        if (!timelineButton) {
+            timelineButton = document.createElement('button');
+            timelineButton.id = 'jump-to-timeline-button';
+            timelineButton.innerText = 'קפיצה למטלות';
+            timelineButton.style.backgroundColor = '#28a745';
+            timelineButton.style.color = '#fff';
+            timelineButton.style.border = 'none';
+            timelineButton.style.padding = '5px 10px';
+            timelineButton.style.cursor = 'pointer';
+            timelineButton.style.borderRadius = '3px';
+            timelineButton.addEventListener('click', jumpToTimelineSection);
+            container.appendChild(timelineButton);
+        }
+    }
+
+    function addManagementButton() {
+        ensureFloatingControls();
+    }
+
+    function jumpToTimelineSection() {
+        const scrollToTimeline = () => {
+            const timelineBlock = document.querySelector('.block-timeline');
+            if (timelineBlock) {
+                timelineBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (typeof timelineBlock.focus === 'function') {
+                    timelineBlock.setAttribute('tabindex', '-1');
+                    timelineBlock.focus({ preventScroll: true });
+                }
+                return true;
+            }
+            return false;
+        };
+
+        if (scrollToTimeline()) {
+            return;
+        }
+
+        const observer = new MutationObserver(() => {
+            if (scrollToTimeline()) {
+                observer.disconnect();
+            }
         });
 
-        document.body.appendChild(button);
+        observer.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => observer.disconnect(), 10000);
     }
 
     function activateManagementButton(pairs) {
