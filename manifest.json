@@ -16,6 +16,9 @@
       "matches": [
         "*://moodle.ruppin.ac.il/my*"
       ],
+      "css": [
+        "content/ui/hide-matalot.css"
+      ],
       "js": [
         "shared/messageContract.js",
         "shared/reminderTime.js",

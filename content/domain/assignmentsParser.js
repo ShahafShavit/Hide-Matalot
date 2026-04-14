@@ -1,6 +1,35 @@
 (function () {
     'use strict';
 
+    function computeStableAssignmentKey(assignmentLink, courseName, exerciseName) {
+        const legacyKey = `${courseName}::${exerciseName}`;
+        if (!assignmentLink || !String(assignmentLink).trim()) {
+            return legacyKey;
+        }
+        try {
+            const u = new URL(assignmentLink);
+            u.hash = '';
+            const id = u.searchParams.get('id');
+            if (id && /^\d+$/.test(id) && u.pathname.includes('/mod/')) {
+                return `cm:${id}`;
+            }
+            const normalized = `${u.origin}${u.pathname}${u.search}`;
+            return `url:${normalized}`;
+        } catch {
+            return legacyKey;
+        }
+    }
+
+    function resolveVisibilityFromState(savedState, uniqueKey, legacyKey) {
+        if (Object.prototype.hasOwnProperty.call(savedState, uniqueKey)) {
+            return savedState[uniqueKey];
+        }
+        if (legacyKey !== uniqueKey && Object.prototype.hasOwnProperty.call(savedState, legacyKey)) {
+            return savedState[legacyKey];
+        }
+        return undefined;
+    }
+
     function cleanUpDates() {
         const dateElements = document.querySelectorAll('[data-region="event-list-content-date"]');
         dateElements.forEach((dateElement) => {
@@ -30,8 +59,9 @@
             if (courseNameElement && exerciseNameElement) {
                 const courseName = courseNameElement.innerText.trim().replace("יש להגיש את 'מטלה' · ", '');
                 const exerciseName = exerciseNameElement.innerText.trim();
-                const uniqueKey = `${courseName}::${exerciseName}`;
+                const legacyKey = `${courseName}::${exerciseName}`;
                 const assignmentLink = exerciseNameElement.href || '';
+                const uniqueKey = computeStableAssignmentKey(assignmentLink, courseName, exerciseName);
 
                 const time = timeElement ? timeElement.innerText.trim() : '23:55';
 
@@ -48,13 +78,22 @@
                     }
                 }
 
-                if (savedState[uniqueKey] === false) {
+                if (resolveVisibilityFromState(savedState, uniqueKey, legacyKey) === false) {
                     item.style.display = 'none';
                 } else {
                     item.style.display = '';
                 }
 
-                pairs.push({ courseName, exerciseName, item, uniqueKey, deadline, time, assignmentLink });
+                pairs.push({
+                    courseName,
+                    exerciseName,
+                    item,
+                    uniqueKey,
+                    legacyKey,
+                    deadline,
+                    time,
+                    assignmentLink
+                });
             }
         });
 
@@ -63,6 +102,8 @@
 
     globalThis.HideMatalotAssignmentsParser = {
         cleanUpDates,
-        extractCourseExercisePairs
+        extractCourseExercisePairs,
+        computeStableAssignmentKey,
+        resolveVisibilityFromState
     };
 })();

@@ -63,9 +63,18 @@
         }
     }
 
-    async function getNotificationsForAssignment(assignmentKey) {
+    function assignmentKeyVariants(pairOrKey) {
+        if (typeof pairOrKey === 'string') {
+            return [pairOrKey];
+        }
+        const keys = [pairOrKey.uniqueKey, pairOrKey.legacyKey].filter(Boolean);
+        return [...new Set(keys)];
+    }
+
+    async function getNotificationsForAssignment(pairOrKey) {
+        const variants = assignmentKeyVariants(pairOrKey);
         const allNotifications = await getAllNotifications();
-        return allNotifications.filter((notification) => notification.assignmentKey === assignmentKey);
+        return allNotifications.filter((notification) => variants.includes(notification.assignmentKey));
     }
 
     async function deleteNotification(notificationId) {
@@ -89,7 +98,12 @@
     async function cleanUpNotifications(pairs) {
         try {
             const allNotifications = await getAllNotifications();
-            const activeKeys = new Set(pairs.map((p) => p.uniqueKey));
+            const activeKeys = new Set();
+            for (const p of pairs) {
+                for (const key of assignmentKeyVariants(p)) {
+                    activeKeys.add(key);
+                }
+            }
 
             for (const notification of allNotifications) {
                 if (!activeKeys.has(notification.assignmentKey)) {

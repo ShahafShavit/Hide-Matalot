@@ -54,32 +54,17 @@
         const currentState = await storage().getSavedState();
         const container = document.createElement('div');
         container.id = 'table-management';
-        container.style.position = 'fixed';
-        container.style.bottom = '10px';
-        container.style.right = '10px';
-        container.style.backgroundColor = '#f9f9f9';
-        container.style.padding = '15px';
-        container.style.border = '1px solid #ccc';
-        container.style.zIndex = '9999';
-        container.style.width = '500px';
-        container.style.maxHeight = '400px';
-        container.style.overflowY = 'auto';
-        container.style.textAlign = 'center';
+        container.className = 'hm-mgmt-panel';
 
         const title = document.createElement('h4');
+        title.className = 'hm-mgmt-title';
         title.innerText = 'בחר מטלות להסתרה';
-        title.style.marginBottom = '10px';
         container.appendChild(title);
 
         const debugContainer = document.createElement('div');
-        debugContainer.style.textAlign = 'left';
-        debugContainer.style.fontSize = 'smaller';
-        debugContainer.style.position = 'absolute';
-        debugContainer.style.top = '16px';
-        debugContainer.style.left = '16px';
+        debugContainer.className = 'hm-debug-corner';
         const debugLabel = document.createElement('label');
         debugLabel.innerText = 'Debug';
-        debugLabel.style.marginLeft = '5px';
         const debugCheckbox = document.createElement('input');
         debugCheckbox.type = 'checkbox';
         debugCheckbox.checked = await storage().getSetting('debug');
@@ -93,65 +78,76 @@
         container.appendChild(debugContainer);
 
         const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'hm-close-panel';
         closeButton.innerHTML = '&times;';
-        closeButton.style.position = 'absolute';
-        closeButton.style.top = '10px';
-        closeButton.style.right = '15px';
-        closeButton.style.backgroundColor = 'transparent';
-        closeButton.style.color = '#d9534f';
-        closeButton.style.border = 'none';
-        closeButton.style.fontSize = '30px';
-        closeButton.style.cursor = 'pointer';
-        closeButton.style.lineHeight = '1';
-        closeButton.style.fontWeight = 'bold';
-        closeButton.addEventListener('mouseenter', () => {
-            closeButton.style.color = '#c9302c';
-        });
-        closeButton.addEventListener('mouseleave', () => {
-            closeButton.style.color = '#d9534f';
-        });
         closeButton.addEventListener('click', () => {
             document.body.removeChild(container);
         });
         container.appendChild(closeButton);
 
         const table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        table.style.marginTop = '10px';
-        table.style.lineHeight = '1';
-        table.style.fontSize = '0.9rem';
+        table.className = 'hm-table';
         const headerRow = document.createElement('tr');
-        const padding = 2;
         headerRow.innerHTML = `
-            <th style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">קורס</th>
-            <th style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">מטלה</th>
-            <th style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">התראות</th>
-            <th style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">הוספה ליומן</th>
-            <th style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">הסתר</th>
+            <th class="hm-th">קורס</th>
+            <th class="hm-th">מטלה</th>
+            <th class="hm-th">התראות</th>
+            <th class="hm-th">הוספה ליומן</th>
+            <th class="hm-th">הסתר</th>
         `;
         table.appendChild(headerRow);
 
-        pairs.forEach(({ courseName, exerciseName, item, uniqueKey, deadline, time }) => {
+        pairs.forEach((pair) => {
+            const { courseName, exerciseName, item, uniqueKey, legacyKey, deadline, time } = pair;
+            const hidden = parser().resolveVisibilityFromState(currentState, uniqueKey, legacyKey) === false;
+
             const row = document.createElement('tr');
-            row.innerHTML = `
-                <td style="border: 1px solid #ccc; padding: ${padding}px;">${courseName}</td>
-                <td style="border: 1px solid #ccc; padding: ${padding}px;">${exerciseName}</td>
-                <td style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">
-                    <button data-action="notifications" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;" title="הגדר התראות">⚙️</button>
-                </td>
-                <td style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">
-                    <button data-action="calendar" style="background: none; border: none; cursor: pointer; font-size: 1.1rem;" title="הוסף ליומן Google">📅</button>
-                </td>
-                <td style="border: 1px solid #ccc; padding: ${padding}px; text-align: center;">
-                    <input type="checkbox" ${currentState[uniqueKey] === false ? 'checked' : ''}>
-                </td>
-            `;
-            const settingsBtn = row.querySelector('button[data-action="notifications"]');
+
+            const courseCell = document.createElement('td');
+            courseCell.className = 'hm-td';
+            courseCell.textContent = courseName;
+
+            const exerciseCell = document.createElement('td');
+            exerciseCell.className = 'hm-td';
+            exerciseCell.textContent = exerciseName;
+
+            const notifCell = document.createElement('td');
+            notifCell.className = 'hm-td hm-td-center';
+            const settingsBtn = document.createElement('button');
+            settingsBtn.type = 'button';
+            settingsBtn.dataset.action = 'notifications';
+            settingsBtn.className = 'hm-icon-btn';
+            settingsBtn.title = 'הגדר התראות';
+            settingsBtn.textContent = '⚙️';
+            notifCell.appendChild(settingsBtn);
+
+            const calendarCell = document.createElement('td');
+            calendarCell.className = 'hm-td hm-td-center';
+            const calendarBtn = document.createElement('button');
+            calendarBtn.type = 'button';
+            calendarBtn.dataset.action = 'calendar';
+            calendarBtn.className = 'hm-icon-btn hm-icon-btn--calendar';
+            calendarBtn.title = 'הוסף ליומן Google';
+            calendarBtn.textContent = '📅';
+            calendarCell.appendChild(calendarBtn);
+
+            const hideCell = document.createElement('td');
+            hideCell.className = 'hm-td hm-td-center';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = hidden;
+            hideCell.appendChild(checkbox);
+
+            row.appendChild(courseCell);
+            row.appendChild(exerciseCell);
+            row.appendChild(notifCell);
+            row.appendChild(calendarCell);
+            row.appendChild(hideCell);
+
             settingsBtn.addEventListener('click', async () => {
-                await modal().displayNotificationSettings(courseName, exerciseName, uniqueKey, deadline, time, pairs);
+                await modal().displayNotificationSettings(pair, pairs);
             });
-            const calendarBtn = row.querySelector('button[data-action="calendar"]');
             calendarBtn.addEventListener('click', () => {
                 if (!deadline) {
                     alert('לא נמצא תאריך הגשה למטלה זו');
@@ -160,15 +156,20 @@
 
                 openGoogleCalendarEvent(courseName, exerciseName, deadline, time);
             });
-            const checkbox = row.querySelector('input');
             checkbox.addEventListener('change', async () => {
                 const isChecked = checkbox.checked;
                 if (isChecked) {
                     item.style.display = 'none';
                     currentState[uniqueKey] = false;
+                    if (legacyKey !== uniqueKey) {
+                        delete currentState[legacyKey];
+                    }
                 } else {
                     item.style.display = '';
                     delete currentState[uniqueKey];
+                    if (legacyKey !== uniqueKey) {
+                        delete currentState[legacyKey];
+                    }
                 }
                 await storage().saveState(currentState);
                 parser().cleanUpDates();
@@ -182,18 +183,10 @@
     function addManagementButton() {
         if (document.getElementById('manage-pairs-button')) return;
         const button = document.createElement('button');
+        button.type = 'button';
         button.id = 'manage-pairs-button';
         button.innerText = 'ניהול תצוגת מטלות (טוען...)';
-        button.style.position = 'fixed';
-        button.style.bottom = '10px';
-        button.style.left = '10px';
-        button.style.backgroundColor = '#6c757d';
-        button.style.color = '#fff';
-        button.style.border = 'none';
-        button.style.padding = '5px 10px';
-        button.style.cursor = 'not-allowed';
-        button.style.borderRadius = '3px';
-        button.style.zIndex = '9999';
+        button.className = 'hm-float-btn hm-float-btn--loading';
         button.disabled = true;
 
         button.addEventListener('click', () => {});
@@ -207,8 +200,8 @@
 
         managementPairs = pairs;
         button.innerText = 'ניהול תצוגת מטלות';
-        button.style.backgroundColor = '#007bff';
-        button.style.cursor = 'pointer';
+        button.classList.remove('hm-float-btn--loading', 'hm-float-btn--error');
+        button.classList.add('hm-float-btn--ready');
         button.disabled = false;
         button.onclick = () => {
             const el = document.getElementById('table-management');
