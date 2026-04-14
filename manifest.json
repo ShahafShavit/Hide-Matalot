@@ -18,6 +18,7 @@
       ],
       "js": [
         "shared/messageContract.js",
+        "shared/reminderTime.js",
         "content.js"
       ]
     }

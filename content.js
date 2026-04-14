@@ -2,6 +2,11 @@
     'use strict';
 
     const { MESSAGE_TYPES } = globalThis.HideMatalotMessaging;
+    const {
+        DEFAULT_NOTIFICATION_HOUR,
+        computeReminderDate,
+        formatReminderDateHeIL
+    } = globalThis.HideMatalotReminderTime;
 
     let debugEnabled = false;
     let managementPairs = [];
@@ -140,7 +145,7 @@
     // Notification Management Functions
     async function saveNotification(notification, assignment) {
         try {
-            const id = `${notification.assignmentKey}::${notification.daysBeforeDeadline}::${notification.notificationHour || '18:00'}::${Date.now()}`;
+            const id = `${notification.assignmentKey}::${notification.daysBeforeDeadline}::${notification.notificationHour || DEFAULT_NOTIFICATION_HOUR}::${Date.now()}`;
             const payload = {
                 ...notification,
                 id,
@@ -364,25 +369,6 @@
         deadlineInfo.innerText = `תאריך הגשה: ${deadlineDate} ${time}`;
         modal.appendChild(deadlineInfo);
 
-        const getReminderDate = (daysBeforeDeadline, notificationHour) => {
-            if (!deadline) return null;
-
-            const reminderDate = new Date(deadline * 1000);
-            reminderDate.setDate(reminderDate.getDate() - daysBeforeDeadline);
-
-            const [hour, minute] = (notificationHour || '18:00').split(':').map(value => parseInt(value, 10));
-            if (!Number.isNaN(hour) && !Number.isNaN(minute)) {
-                reminderDate.setHours(hour, minute, 0, 0);
-            }
-
-            return reminderDate;
-        };
-
-        const formatReminderDate = reminderDate => {
-            if (!reminderDate) return 'לא ידוע';
-            return `${reminderDate.toLocaleDateString('he-IL')} ${reminderDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
-        };
-
         // Notifications list
         const listHeader = document.createElement('div');
         listHeader.innerText = 'התראות קיימות:';
@@ -425,8 +411,8 @@
                     notifRow.style.gap = '8px';
 
                     const notifText = document.createElement('span');
-                    const reminderDate = getReminderDate(notif.daysBeforeDeadline, notif.notificationHour);
-                    notifText.innerText = `${notif.daysBeforeDeadline} יום לפני · ${formatReminderDate(reminderDate)}`;
+                    const reminderDate = computeReminderDate(deadline, notif.daysBeforeDeadline, notif.notificationHour);
+                    notifText.innerText = `${notif.daysBeforeDeadline} יום לפני · ${formatReminderDateHeIL(reminderDate)}`;
 
                     const deleteBtn = document.createElement('button');
                     deleteBtn.innerText = '❌';
@@ -479,7 +465,7 @@
 
         const hourInput = document.createElement('input');
         hourInput.type = 'time';
-        hourInput.value = '18:00';
+        hourInput.value = DEFAULT_NOTIFICATION_HOUR;
         hourInput.step = '60';
         hourInput.style.width = '110px';
         hourInput.style.padding = '6px';
@@ -494,14 +480,14 @@
 
         const updatePreviewText = () => {
             const days = parseInt(daysInput.value, 10);
-            const notificationHour = hourInput.value || '18:00';
+            const notificationHour = hourInput.value || DEFAULT_NOTIFICATION_HOUR;
             if (Number.isNaN(days) || days < 1) {
                 previewText.innerText = 'תאריך התראה: -';
                 return;
             }
 
-            const previewDate = getReminderDate(days, notificationHour);
-            previewText.innerText = `תאריך התראה: ${formatReminderDate(previewDate)}`;
+            const previewDate = computeReminderDate(deadline, days, notificationHour);
+            previewText.innerText = `תאריך התראה: ${formatReminderDateHeIL(previewDate)}`;
         };
 
         daysInput.addEventListener('input', updatePreviewText);
@@ -519,7 +505,7 @@
         addBtn.style.fontSize = '0.9rem';
         addBtn.addEventListener('click', async () => {
             const days = parseInt(daysInput.value, 10);
-            const notificationHour = hourInput.value || '18:00';
+            const notificationHour = hourInput.value || DEFAULT_NOTIFICATION_HOUR;
             if (isNaN(days) || days < 1 || days > 365) {
                 alert('הזן מספר בין 1 ל-365 ימים');
                 return;
@@ -531,12 +517,12 @@
             }
 
             // Check for duplicate
-            if (existingNotifications.some(n => n.daysBeforeDeadline === days && (n.notificationHour || '18:00') === notificationHour)) {
+            if (existingNotifications.some(n => n.daysBeforeDeadline === days && (n.notificationHour || DEFAULT_NOTIFICATION_HOUR) === notificationHour)) {
                 alert('התראה זו כבר קיימת');
                 return;
             }
 
-            const reminderDate = getReminderDate(days, notificationHour);
+            const reminderDate = computeReminderDate(deadline, days, notificationHour);
             if (!reminderDate || reminderDate.getTime() <= Date.now()) {
                 alert('לא ניתן להוסיף התראה לזמן שכבר עבר');
                 return;
@@ -562,7 +548,7 @@
                 existingNotifications.push({ ...newNotification, id: newId });
                 displayNotifications();
                 daysInput.value = '';
-                hourInput.value = '18:00';
+                hourInput.value = DEFAULT_NOTIFICATION_HOUR;
                 updatePreviewText();
                 daysInput.focus();
             } catch (error) {

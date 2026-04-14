@@ -1,7 +1,11 @@
 // Service Worker for Hide-Matalot Extension
 // Handles desktop notifications and background scheduled reminders.
 
-importScripts('shared/messageContract.js');
+importScripts(
+    'shared/messageContract.js',
+    'shared/reminderTime.js',
+    'shared/backgroundMessageHandlers.js'
+);
 
 const {
     MESSAGE_TYPES,
@@ -13,6 +17,9 @@ const {
     validateDeleteAssignmentNotification,
     validateGetScheduledNotifications
 } = globalThis.HideMatalotMessaging;
+
+const { computeReminderTimestamp } = globalThis.HideMatalotReminderTime;
+const createMessageHandlers = globalThis.HideMatalotBackgroundMessageHandlers;
 
 const STORAGE_KEY = 'scheduledNotifications';
 const ALARM_PREFIX = 'assignmentNotification:';
@@ -67,16 +74,6 @@ function createDesktopNotification(title, message, iconUrl, clickUrl, sendRespon
     });
 }
 
-function computeReminderTimestamp(deadline, daysBeforeDeadline, notificationHour) {
-    const reminderDate = new Date(deadline * 1000);
-    reminderDate.setDate(reminderDate.getDate() - daysBeforeDeadline);
-    const [hour, minute] = (notificationHour || '18:00').split(':').map(value => parseInt(value, 10));
-    if (!Number.isNaN(hour) && !Number.isNaN(minute)) {
-        reminderDate.setHours(hour, minute, 0, 0);
-    }
-    return reminderDate.getTime();
-}
-
 function getAlarmName(notificationId) {
     return `${ALARM_PREFIX}${notificationId}`;
 }
@@ -101,6 +98,22 @@ async function syncAlarmsFromStorage() {
         await scheduleAlarm(notification);
     }
 }
+
+const MESSAGE_HANDLERS = createMessageHandlers({
+    MESSAGE_TYPES,
+    validateCreateNotification,
+    validateScheduleAssignmentNotification,
+    validateDeleteAssignmentNotification,
+    validateGetScheduledNotifications,
+    responseSuccess,
+    responseError,
+    computeReminderTimestamp,
+    getScheduledNotifications,
+    setScheduledNotifications,
+    scheduleAlarm,
+    removeScheduledNotification,
+    createDesktopNotification
+});
 
 chrome.runtime.onInstalled.addListener(() => {
     syncAlarmsFromStorage().catch(error => console.error('[Background Worker] Failed to sync alarms on install:', error));
@@ -149,88 +162,10 @@ chrome.notifications.onClicked.addListener(async notificationId => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const operationId = newOperationId();
     const type = request?.type;
+    const handler = type ? MESSAGE_HANDLERS[type] : undefined;
 
-    if (type === MESSAGE_TYPES.CREATE_NOTIFICATION) {
-        const validation = validateCreateNotification(request);
-        if (!validation.ok) {
-            console.error('[Background Worker]', operationId, 'CREATE_NOTIFICATION validation failed:', validation.error);
-            sendResponse(responseError(validation.error, operationId));
-            return false;
-        }
-        const { title, message, iconUrl, clickUrl } = request;
-        console.log('[Background Worker]', operationId, 'Creating direct notification:', { title, message });
-        createDesktopNotification(title, message, iconUrl, clickUrl || '', sendResponse, operationId);
-        return true;
-    }
-
-    if (type === MESSAGE_TYPES.SCHEDULE_ASSIGNMENT_NOTIFICATION) {
-        const validation = validateScheduleAssignmentNotification(request);
-        if (!validation.ok) {
-            console.error('[Background Worker]', operationId, 'SCHEDULE_ASSIGNMENT_NOTIFICATION validation failed:', validation.error);
-            sendResponse(responseError(validation.error, operationId));
-            return false;
-        }
-
-        (async () => {
-            const payload = request.notification;
-            const triggerAt = computeReminderTimestamp(payload.deadline, payload.daysBeforeDeadline, payload.notificationHour);
-            if (triggerAt <= Date.now()) {
-                console.error('[Background Worker]', operationId, 'Reminder time is already in the past');
-                sendResponse(responseError('Reminder time is already in the past', operationId));
-                return;
-            }
-
-            const notifications = await getScheduledNotifications();
-            const nextNotification = { ...payload, triggerAt };
-            notifications.push(nextNotification);
-            await setScheduledNotifications(notifications);
-            await scheduleAlarm(nextNotification);
-
-            sendResponse(responseSuccess({ triggerAt }));
-        })().catch(error => {
-            console.error('[Background Worker]', operationId, 'Failed to schedule notification:', error);
-            sendResponse(responseError(String(error), operationId));
-        });
-
-        return true;
-    }
-
-    if (type === MESSAGE_TYPES.DELETE_ASSIGNMENT_NOTIFICATION) {
-        const validation = validateDeleteAssignmentNotification(request);
-        if (!validation.ok) {
-            console.error('[Background Worker]', operationId, 'DELETE_ASSIGNMENT_NOTIFICATION validation failed:', validation.error);
-            sendResponse(responseError(validation.error, operationId));
-            return false;
-        }
-
-        (async () => {
-            await removeScheduledNotification(request.notificationId);
-            sendResponse(responseSuccess());
-        })().catch(error => {
-            console.error('[Background Worker]', operationId, 'Failed to delete notification:', error);
-            sendResponse(responseError(String(error), operationId));
-        });
-
-        return true;
-    }
-
-    if (type === MESSAGE_TYPES.GET_SCHEDULED_NOTIFICATIONS) {
-        const validation = validateGetScheduledNotifications(request);
-        if (!validation.ok) {
-            console.error('[Background Worker]', operationId, 'GET_SCHEDULED_NOTIFICATIONS validation failed:', validation.error);
-            sendResponse(responseError(validation.error, operationId));
-            return false;
-        }
-
-        (async () => {
-            const notifications = await getScheduledNotifications();
-            sendResponse(responseSuccess({ notifications }));
-        })().catch(error => {
-            console.error('[Background Worker]', operationId, 'Failed to fetch notifications:', error);
-            sendResponse(responseError(String(error), operationId));
-        });
-
-        return true;
+    if (handler) {
+        return handler(request, { sendResponse, operationId, sender });
     }
 
     console.error('[Background Worker]', operationId, 'Unknown message type:', type);
