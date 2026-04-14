@@ -14,7 +14,7 @@
     "content_scripts": [
     {
       "matches": [
-        "*://moodle.*/my*"
+      "*://*.ac.il/my/*"
       ],
       "css": [
         "content/ui/hide-matalot.css"

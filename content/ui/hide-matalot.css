@@ -153,6 +153,10 @@
     margin-bottom: 10px;
 }
 
+body h4.hm-mgmt-title {
+    color: #000 !important;
+}
+
 .hm-debug-corner {
     text-align: left;
     font-size: smaller;
@@ -215,15 +219,23 @@
     font-size: 1.1rem;
 }
 
-.hm-float-btn {
+.hm-float-controls {
     position: fixed;
     bottom: 10px;
-    left: 10px;
+    right: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    z-index: 9999;
+}
+
+.hm-float-btn {
     color: #fff;
     border: none;
-    padding: 5px 10px;
+    padding: 10px 16px;
     border-radius: 3px;
-    z-index: 9999;
+    font-size: 1rem;
+    white-space: nowrap;
 }
 
 .hm-float-btn--loading {
@@ -232,6 +244,11 @@
 }
 
 .hm-float-btn--ready {
+    background-color: #28a745;
+    cursor: pointer;
+}
+
+.hm-float-btn--jump {
     background-color: #007bff;
     cursor: pointer;
 }
@@ -239,4 +256,26 @@
 .hm-float-btn--error {
     background-color: #d9534f;
     cursor: not-allowed;
+}
+
+.hm-calendar-menu {
+    position: fixed;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 10001;
+    min-width: 200px;
+    padding: 8px 0;
+}
+
+.hm-calendar-menu-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+}
+
+.hm-calendar-menu-item:hover {
+    background-color: #f0f0f0;
 }

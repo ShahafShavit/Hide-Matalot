@@ -1,10 +1,11 @@
 # Changelog
 
-## [1.4] - 2026-04-14
+## [1.4] - 14.04.2026
 ### Added
-- The extension is now fully supported across all academic Moodle platforms in Israel (.ac.il domains).
-- Added a new button to export deadlines to Microsoft Calendar, alongside the existing Google Calendar option.
-- Introduced a new "Jump" button to instantly navigate directly to the assignments section on the course page.
+- Expanded support to work with all academic Moodle websites.
+- Added an "Add to Microsoft Calendar" button for assignment deadlines.
+- Added a "Jump" button for quick access to the assignments section.
+- Debug option to create 3 mock assignments for testing.
 
 ## [1.3] - 13.04.2026
 ### Added
