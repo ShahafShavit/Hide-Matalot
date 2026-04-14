@@ -1,0 +1,242 @@
+/* Hide-Matalot content UI — scoped class names to avoid clashing with host page */
+
+.hm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+}
+
+.hm-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    z-index: 10000;
+    width: 400px;
+    max-height: 500px;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.hm-modal-header {
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.hm-muted {
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.hm-muted--flush {
+    margin-bottom: 0;
+}
+
+.hm-section-title {
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.hm-notifications-list {
+    margin-bottom: 15px;
+    min-height: 30px;
+    max-height: 200px;
+    overflow-y: auto;
+    color: #666;
+}
+
+.hm-notif-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 8px;
+    background-color: #f5f5f5;
+    border-radius: 3px;
+    font-size: 0.9rem;
+    gap: 8px;
+}
+
+.hm-notif-delete {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.hm-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.hm-input-days {
+    flex: 1;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 0.9rem;
+}
+
+.hm-input-hour {
+    width: 110px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 0.9rem;
+}
+
+.hm-preview {
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.hm-btn-add {
+    padding: 6px 12px;
+    background-color: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.hm-btn-debug {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    background-color: #6c757d;
+    color: #000;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.hm-btn-close-modal {
+    width: 100%;
+    padding: 10px;
+    background-color: #6c757d;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.hm-mgmt-panel {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background-color: #f9f9f9;
+    padding: 15px;
+    border: 1px solid #ccc;
+    z-index: 9999;
+    width: 500px;
+    max-height: 400px;
+    overflow-y: auto;
+    text-align: center;
+}
+
+.hm-mgmt-title {
+    margin-bottom: 10px;
+}
+
+.hm-debug-corner {
+    text-align: left;
+    font-size: smaller;
+    position: absolute;
+    top: 16px;
+    left: 16px;
+}
+
+.hm-debug-corner label {
+    margin-left: 5px;
+}
+
+.hm-close-panel {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background-color: transparent;
+    color: #d9534f;
+    border: none;
+    font-size: 30px;
+    cursor: pointer;
+    line-height: 1;
+    font-weight: bold;
+}
+
+.hm-close-panel:hover {
+    color: #c9302c;
+}
+
+.hm-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    line-height: 1;
+    font-size: 0.9rem;
+}
+
+.hm-th,
+.hm-td {
+    border: 1px solid #ccc;
+    padding: 2px;
+}
+
+.hm-th {
+    text-align: center;
+}
+
+.hm-td-center {
+    text-align: center;
+}
+
+.hm-icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.hm-icon-btn--calendar {
+    font-size: 1.1rem;
+}
+
+.hm-float-btn {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    z-index: 9999;
+}
+
+.hm-float-btn--loading {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.hm-float-btn--ready {
+    background-color: #007bff;
+    cursor: pointer;
+}
+
+.hm-float-btn--error {
+    background-color: #d9534f;
+    cursor: not-allowed;
+}
