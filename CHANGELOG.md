@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.3.2] - 15.04.2026
+- Bug fixes
+
 ## [1.3.1] - 14.04.2026
 ### Added
 - Expanded support to work with all academic Moodle websites.
