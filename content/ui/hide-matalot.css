@@ -244,7 +244,7 @@ body h4.hm-mgmt-title {
 }
 
 .hm-float-btn--ready {
-    background-color: #28a745;
+    background-color: #28a745!important;
     cursor: pointer;
 }
 
