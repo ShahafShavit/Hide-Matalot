@@ -1,6 +1,17 @@
 # Changelog
 
-## [1.4] - 14.04.2026
+## [1.3.3] - 15.04.2026
+- New name and description
+- Bug fixes
+
+## [1.3.1] - 14.04.2026
+### Added
+- Expanded support to work with all academic Moodle websites.
+- Added an "Add to Microsoft Calendar" button for assignment deadlines.
+- Added a "Jump" button for quick access to the assignments section.
+- Debug option to create 3 mock assignments for testing.
+
+## [1.3.1] - 14.04.2026
 ### Added
 - Expanded support to work with all academic Moodle websites.
 - Added an "Add to Microsoft Calendar" button for assignment deadlines.
