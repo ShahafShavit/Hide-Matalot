@@ -17,10 +17,6 @@ DESCRIPTION:
 *יומן: ניתן להוסיף מטלה בודדת ליומן לבחירתכם ישירות מתוך הטבלה.
 *ניווט מהיר למטלות: כפתור המאפשר קפיצה ישירה לאזור המטלות, ללא צורך בגלילה.
 
-אייקון באדיבות flaticon
-https://www.flaticon.com/free-icon/hide_18110470?term=hide&page=1&position=4&origin=search&related_id=18110470
-This icon has been designed using resources from Flaticon.com
-
 ---FINISH---
 
 
