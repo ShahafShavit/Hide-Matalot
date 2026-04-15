@@ -14,9 +14,21 @@
     "content_scripts": [
     {
       "matches": [
-        "*://moodle.ruppin.ac.il/my*"
+      "*://*.ac.il/my/*"
+      ],
+      "css": [
+        "content/ui/hide-matalot.css"
       ],
       "js": [
+        "shared/messageContract.js",
+        "shared/reminderTime.js",
+        "content/debug.js",
+        "content/storage/indexedDbState.js",
+        "content/messaging/runtimeClient.js",
+        "content/domain/assignmentsParser.js",
+        "content/ui/notificationSettingsModal.js",
+        "content/ui/managementDialog.js",
+        "content/orchestration/initController.js",
         "content.js"
       ]
     }

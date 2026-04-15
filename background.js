@@ -1,6 +1,26 @@
 // Service Worker for Hide-Matalot Extension
 // Handles desktop notifications and background scheduled reminders.
 
+importScripts(
+    'shared/messageContract.js',
+    'shared/reminderTime.js',
+    'shared/backgroundMessageHandlers.js'
+);
+
+const {
+    MESSAGE_TYPES,
+    newOperationId,
+    responseSuccess,
+    responseError,
+    validateCreateNotification,
+    validateScheduleAssignmentNotification,
+    validateDeleteAssignmentNotification,
+    validateGetScheduledNotifications
+} = globalThis.HideMatalotMessaging;
+
+const { computeReminderTimestamp, DEFAULT_NOTIFICATION_HOUR } = globalThis.HideMatalotReminderTime;
+const createMessageHandlers = globalThis.HideMatalotBackgroundMessageHandlers;
+
 const STORAGE_KEY = 'scheduledNotifications';
 const ALARM_PREFIX = 'assignmentNotification:';
 const CLICK_URLS_KEY = 'notificationClickUrls';
@@ -25,7 +45,7 @@ async function setNotificationClickUrls(urlsByNotificationId) {
     await chrome.storage.local.set({ [CLICK_URLS_KEY]: urlsByNotificationId });
 }
 
-function createDesktopNotification(title, message, iconUrl, clickUrl, sendResponse) {
+function createDesktopNotification(title, message, iconUrl, clickUrl, sendResponse, operationId) {
     chrome.notifications.create('', {
         type: 'basic',
         iconUrl,
@@ -36,40 +56,63 @@ function createDesktopNotification(title, message, iconUrl, clickUrl, sendRespon
     }, notificationId => {
         if (chrome.runtime.lastError) {
             const errorMessage = chrome.runtime.lastError.message;
-            console.error('[Background Worker] Notification error:', errorMessage);
-            if (sendResponse) sendResponse({ success: false, error: errorMessage });
+            console.error('[Background Worker]', operationId, 'Notification error:', errorMessage);
+            if (sendResponse) sendResponse(responseError(errorMessage, operationId));
             return;
         }
 
-        console.log('[Background Worker] Notification created with ID:', notificationId);
+        console.log('[Background Worker]', operationId, 'Notification created with ID:', notificationId);
         if (clickUrl) {
             getNotificationClickUrls()
                 .then(urlMap => {
                     urlMap[notificationId] = clickUrl;
                     return setNotificationClickUrls(urlMap);
                 })
-                .catch(error => console.error('[Background Worker] Failed saving click URL:', error));
+                .catch(error => console.error('[Background Worker]', operationId, 'Failed saving click URL:', error));
         }
-        if (sendResponse) sendResponse({ success: true, notificationId });
+        if (sendResponse) sendResponse(responseSuccess({ notificationId }));
     });
-}
-
-function computeReminderTimestamp(deadline, daysBeforeDeadline, notificationHour) {
-    const reminderDate = new Date(deadline * 1000);
-    reminderDate.setDate(reminderDate.getDate() - daysBeforeDeadline);
-    const [hour, minute] = (notificationHour || '18:00').split(':').map(value => parseInt(value, 10));
-    if (!Number.isNaN(hour) && !Number.isNaN(minute)) {
-        reminderDate.setHours(hour, minute, 0, 0);
-    }
-    return reminderDate.getTime();
 }
 
 function getAlarmName(notificationId) {
     return `${ALARM_PREFIX}${notificationId}`;
 }
 
+/** Legacy ids were `${slotId}::${Date.now()}`; normalize to slot id for deduping. */
+function normalizeScheduledNotificationRecordId(id) {
+    if (typeof id !== 'string' || !id) {
+        return id;
+    }
+    const parts = id.split('::');
+    const last = parts[parts.length - 1];
+    if (parts.length >= 4 && /^\d{10,}$/.test(last)) {
+        return parts.slice(0, -1).join('::');
+    }
+    return id;
+}
+
+function buildScheduleSlotId(payload) {
+    const hour =
+        payload.notificationHour != null && payload.notificationHour !== ''
+            ? String(payload.notificationHour)
+            : DEFAULT_NOTIFICATION_HOUR;
+    return `${payload.assignmentKey}::${payload.daysBeforeDeadline}::${hour}`;
+}
+
 async function scheduleAlarm(notification) {
     chrome.alarms.create(getAlarmName(notification.id), { when: notification.triggerAt });
+}
+
+async function replaceScheduledNotificationSlot(slotId, nextNotification) {
+    const notifications = await getScheduledNotifications();
+    const removed = notifications.filter(n => normalizeScheduledNotificationRecordId(n.id) === slotId);
+    const kept = notifications.filter(n => normalizeScheduledNotificationRecordId(n.id) !== slotId);
+    for (const old of removed) {
+        await chrome.alarms.clear(getAlarmName(old.id));
+    }
+    kept.push(nextNotification);
+    await setScheduledNotifications(kept);
+    await scheduleAlarm(nextNotification);
 }
 
 async function removeScheduledNotification(notificationId) {
@@ -83,11 +126,44 @@ async function syncAlarmsFromStorage() {
     const notifications = await getScheduledNotifications();
     const now = Date.now();
     const active = notifications.filter(notification => notification.triggerAt > now);
-    await setScheduledNotifications(active);
-    for (const notification of active) {
+    const bySlot = new Map();
+    for (const n of active) {
+        const slot = normalizeScheduledNotificationRecordId(n.id);
+        const prev = bySlot.get(slot);
+        if (!prev || n.triggerAt >= prev.triggerAt) {
+            bySlot.set(slot, n);
+        }
+    }
+    const deduped = Array.from(bySlot.values());
+    const keptIds = new Set(deduped.map(n => n.id));
+    for (const n of active) {
+        if (!keptIds.has(n.id)) {
+            await chrome.alarms.clear(getAlarmName(n.id));
+        }
+    }
+    await setScheduledNotifications(deduped);
+    for (const notification of deduped) {
         await scheduleAlarm(notification);
     }
 }
+
+const MESSAGE_HANDLERS = createMessageHandlers({
+    MESSAGE_TYPES,
+    validateCreateNotification,
+    validateScheduleAssignmentNotification,
+    validateDeleteAssignmentNotification,
+    validateGetScheduledNotifications,
+    responseSuccess,
+    responseError,
+    computeReminderTimestamp,
+    buildScheduleSlotId,
+    replaceScheduledNotificationSlot,
+    getScheduledNotifications,
+    setScheduledNotifications,
+    scheduleAlarm,
+    removeScheduledNotification,
+    createDesktopNotification
+});
 
 chrome.runtime.onInstalled.addListener(() => {
     syncAlarmsFromStorage().catch(error => console.error('[Background Worker] Failed to sync alarms on install:', error));
@@ -134,60 +210,17 @@ chrome.notifications.onClicked.addListener(async notificationId => {
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.type === 'CREATE_NOTIFICATION') {
-        const { title, message, iconUrl, clickUrl } = request;
-        console.log('[Background Worker] Creating direct notification:', { title, message });
-        createDesktopNotification(title, message, iconUrl, clickUrl || '', sendResponse);
-        return true;
+    const operationId = newOperationId();
+    const type = request?.type;
+    const handler = type ? MESSAGE_HANDLERS[type] : undefined;
+
+    if (handler) {
+        return handler(request, { sendResponse, operationId, sender });
     }
 
-    if (request.type === 'SCHEDULE_ASSIGNMENT_NOTIFICATION') {
-        (async () => {
-            const payload = request.notification;
-            const triggerAt = computeReminderTimestamp(payload.deadline, payload.daysBeforeDeadline, payload.notificationHour);
-            if (triggerAt <= Date.now()) {
-                sendResponse({ success: false, error: 'Reminder time is already in the past' });
-                return;
-            }
-
-            const notifications = await getScheduledNotifications();
-            const nextNotification = { ...payload, triggerAt };
-            notifications.push(nextNotification);
-            await setScheduledNotifications(notifications);
-            await scheduleAlarm(nextNotification);
-
-            sendResponse({ success: true, triggerAt });
-        })().catch(error => {
-            console.error('[Background Worker] Failed to schedule notification:', error);
-            sendResponse({ success: false, error: String(error) });
-        });
-
-        return true;
-    }
-
-    if (request.type === 'DELETE_ASSIGNMENT_NOTIFICATION') {
-        (async () => {
-            await removeScheduledNotification(request.notificationId);
-            sendResponse({ success: true });
-        })().catch(error => {
-            console.error('[Background Worker] Failed to delete notification:', error);
-            sendResponse({ success: false, error: String(error) });
-        });
-
-        return true;
-    }
-
-    if (request.type === 'GET_SCHEDULED_NOTIFICATIONS') {
-        (async () => {
-            const notifications = await getScheduledNotifications();
-            sendResponse({ success: true, notifications });
-        })().catch(error => {
-            console.error('[Background Worker] Failed to fetch notifications:', error);
-            sendResponse({ success: false, error: String(error), notifications: [] });
-        });
-
-        return true;
-    }
+    console.error('[Background Worker]', operationId, 'Unknown message type:', type);
+    sendResponse(responseError(type ? `Unknown message type: ${type}` : 'Missing message type', operationId));
+    return false;
 });
 
 console.log('[Background Worker] Service worker initialized');
