@@ -5,7 +5,8 @@
     const parser = () => globalThis.HideMatalotAssignmentsParser;
     const modal = () => globalThis.HideMatalotNotificationSettingsModal;
     const debug = () => globalThis.HideMatalotContentDebug;
-
+    const client = () => globalThis.HideMatalotRuntimeClient;
+    
     let managementPairs = [];
 
     function buildGoogleCalendarUrl(courseName, exerciseName, deadline, time) {
@@ -362,6 +363,25 @@
         });
         container.appendChild(closeButton);
 
+        const exportButton = document.createElement('button');
+        exportButton.type = 'button';
+        exportButton.className = 'hm-export-btn';
+        exportButton.innerHTML = '📥';
+        exportButton.title = 'ייצוא (CSV)'
+        exportButton.addEventListener('click', () => {
+            if (!managementPairs) {
+                return;
+            }
+
+            // Use managementPairs or pairs?
+            const noneHiddenMatalot = managementPairs.filter(
+                ({ uniqueKey, legacyKey }) => parser().resolveVisibilityFromState(currentState, uniqueKey, legacyKey) !== false
+            )
+            client().downloadMatalotCsv(noneHiddenMatalot)
+            
+        });
+        container.appendChild(exportButton);
+        
         const mockBtn = document.createElement('button');
         mockBtn.type = 'button';
         mockBtn.id = 'add-mock-assignments-btn';

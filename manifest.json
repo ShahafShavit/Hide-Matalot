@@ -7,7 +7,7 @@
     "48": "hide48.png",
     "128": "hide128.png"
   },
-  "permissions": ["notifications", "alarms", "storage", "tabs"],
+  "permissions": ["notifications", "alarms", "storage", "tabs", "downloads"],
     "background": {
       "service_worker": "background.js"
     },
