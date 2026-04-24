@@ -4,7 +4,8 @@
 importScripts(
     'shared/messageContract.js',
     'shared/reminderTime.js',
-    'shared/backgroundMessageHandlers.js'
+    'shared/backgroundMessageHandlers.js',
+    'shared/fileExports.js'
 );
 
 const {
@@ -20,7 +21,7 @@ const {
 
 const { computeReminderTimestamp, DEFAULT_NOTIFICATION_HOUR } = globalThis.HideMatalotReminderTime;
 const createMessageHandlers = globalThis.HideMatalotBackgroundMessageHandlers;
-
+const { saveFile } = globalThis.HideMatalotFileExports;
 const STORAGE_KEY = 'scheduledNotifications';
 const ALARM_PREFIX = 'assignmentNotification:';
 const CLICK_URLS_KEY = 'notificationClickUrls';
@@ -162,7 +163,8 @@ const MESSAGE_HANDLERS = createMessageHandlers({
     setScheduledNotifications,
     scheduleAlarm,
     removeScheduledNotification,
-    createDesktopNotification
+    createDesktopNotification,
+    saveFile
 });
 
 chrome.runtime.onInstalled.addListener(() => {

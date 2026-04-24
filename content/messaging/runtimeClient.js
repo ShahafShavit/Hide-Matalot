@@ -170,7 +170,7 @@
             if (minutes)
                 date.setMinutes(date.getMinutes() + minutes);
 
-            csvArr.push(['"' + courseName + '"', '"' + exerciseName + '"', date.toISOString()]);
+            csvArr.push(['"' + courseName.replace('"', '""') + '"', '"' + exerciseName + '"', date.toISOString()]);
         });
         const csvStr = csvArr.map(e => e.join(",")).join("\n");
 
