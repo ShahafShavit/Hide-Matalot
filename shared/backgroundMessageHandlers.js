@@ -15,7 +15,8 @@
             setScheduledNotifications,
             scheduleAlarm,
             removeScheduledNotification,
-            createDesktopNotification
+            createDesktopNotification,
+            saveFile
         } = deps;
 
         function handleCreateNotification(request, { sendResponse, operationId }) {
@@ -105,12 +106,8 @@
                 const { fileType, fileName, data } = request;
                 switch (fileType) { 
                     case 'csv':
-                        const url = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(data);
-                        chrome.downloads.download({
-                            url,
-                            filename: fileName,
-                            saveAs: true
-                        });
+                        const url = "data:text/csv;charset=utf-8,\ufeff" + encodeURIComponent(data);
+                        saveFile(url, fileName)
                         break;
                 
                     default:
