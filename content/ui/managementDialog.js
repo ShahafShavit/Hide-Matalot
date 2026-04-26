@@ -585,9 +585,9 @@
         const headerNodes = document.querySelectorAll('[data-timestamp].mt-3');
         headerNodes.forEach(el => {
             try {
-                const diff = parseInt(el.dataset.timestamp) - Math.floor(Date.now() / 1000)
+                const diff = parseInt(el.dataset.timestamp) - Math.floor(Date.now() / 1000);
                 const days = Math.floor(diff / (60 * 60 * 24));
-                el.dataset.mtCountdown = 'ימים: ' + days;
+                el.dataset.mtCountdown = 'ימים: ' + (days < 0 ? 0 : days);
             } catch (error) {
                 console.error(error);
             }
