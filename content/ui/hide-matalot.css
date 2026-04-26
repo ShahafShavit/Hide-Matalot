@@ -188,7 +188,7 @@ body h4.hm-mgmt-title {
 
 .hm-export-btn {
     position: absolute;
-    right: 40px;
+    right: 50px;
     top: 15px;
     background-color: transparent;
     border: none;
@@ -197,10 +197,6 @@ body h4.hm-mgmt-title {
     margin: 0;
     padding: 0;
     transition: text-shadow 0.3s;
-}
-
-.hm-export-btn:hover {
-    text-shadow:  0px 0px 5px #808080a5;
 }
 
 
@@ -296,4 +292,19 @@ body h4.hm-mgmt-title {
 
 .hm-calendar-menu-item:hover {
     background-color: #f0f0f0;
+}
+
+
+[data-mt-countdown].mt-3::after {
+    font-size: 0.9rem;
+    font-weight: bold;
+    content: attr(data-mt-countdown);
+}
+
+.hm-countdown-checkbox-container {
+    text-align: left;
+    font-size: smaller;
+    position: absolute;
+    left: 16px;
+    top: 32px;
 }
