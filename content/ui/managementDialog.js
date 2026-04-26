@@ -381,6 +381,33 @@
             
         });
         container.appendChild(exportButton);
+
+        const settingsShowCountdown = !!(await storage().getSetting('showCountdown'));
+        const countdownCheckboxContainer = document.createElement('div');
+        countdownCheckboxContainer.className = 'hm-countdown-checkbox-container';
+
+        const countdownCheckboxLabel = document.createElement('label');
+        countdownCheckboxLabel.innerText = 'ספירה לאחור';
+
+        const countdownCheckbox = document.createElement('input');
+        countdownCheckbox.type='checkbox';
+        countdownCheckbox.title='ספירה לאחור';
+        countdownCheckbox.checked = settingsShowCountdown
+        
+        countdownCheckboxContainer.appendChild(countdownCheckboxLabel)
+        countdownCheckboxContainer.appendChild(countdownCheckbox)
+        countdownCheckbox.addEventListener('change', (e) => {
+            const checked = e.target?.checked;
+            storage().saveSetting('showCountdown', checked);
+            if(checked) showCountdown();
+            else {
+                const headerNodes = document.querySelectorAll('[data-timestamp].mt-3');
+                headerNodes.forEach(el => el.dataset.mtCountdown = '');
+            }
+        });
+        container.appendChild(countdownCheckboxContainer);
+
+        
         
         const mockBtn = document.createElement('button');
         mockBtn.type = 'button';
@@ -553,9 +580,23 @@
         };
     }
 
+    function showCountdown() {
+        const headerNodes = document.querySelectorAll('[data-timestamp].mt-3');
+        headerNodes.forEach(el => {
+            try {
+                const diff = parseInt(el.dataset.timestamp) - Math.floor(Date.now() / 1000)
+                const days = Math.floor(diff / (60 * 60 * 24));
+                el.dataset.mtCountdown = 'ימים: ' + days;
+            } catch (error) {
+                console.error(error);
+            }
+        });
+    }
+
     globalThis.HideMatalotManagementDialog = {
         addManagementButton,
         activateManagementButton,
-        jumpToTimelineSection
+        jumpToTimelineSection,
+        showCountdown
     };
 })();
