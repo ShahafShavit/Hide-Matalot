@@ -319,8 +319,3 @@ body h4.hm-mgmt-title {
     margin-bottom: 0;
     line-height: 1em;
 }
-
-.hm-countdown-checkbox-container label:focus-visible,
-.hm-countdown-checkbox-container label:focus {
-    outline: none;
-}
