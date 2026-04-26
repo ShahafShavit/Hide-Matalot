@@ -399,10 +399,11 @@
         countdownCheckbox.addEventListener('change', (e) => {
             const checked = e.target?.checked;
             storage().saveSetting('showCountdown', checked);
-            if(checked) showCountdown();
+            if (checked)
+                showCountdown();
             else {
                 const headerNodes = document.querySelectorAll('[data-timestamp].mt-3');
-                headerNodes.forEach(el => el.dataset.mtCountdown = '');
+                headerNodes?.forEach(el => el.dataset.mtCountdown = '');
             }
         });
         container.appendChild(countdownCheckboxContainer);
