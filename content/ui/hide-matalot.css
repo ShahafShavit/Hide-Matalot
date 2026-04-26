@@ -308,3 +308,19 @@ body h4.hm-mgmt-title {
     left: 16px;
     top: 32px;
 }
+
+.hm-countdown-checkbox-container input {
+    cursor: pointer;
+}
+
+.hm-countdown-checkbox-container label {
+    margin-left: 0.5rem;
+    padding: 0;
+    margin-bottom: 0;
+    line-height: 1em;
+}
+
+.hm-countdown-checkbox-container label:focus-visible,
+.hm-countdown-checkbox-container label:focus {
+    outline: none;
+}
