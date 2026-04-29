@@ -373,7 +373,6 @@
                 return;
             }
 
-            // Use managementPairs or pairs?
             const noneHiddenMatalot = managementPairs.filter(
                 ({ uniqueKey, legacyKey }) => parser().resolveVisibilityFromState(currentState, uniqueKey, legacyKey) !== false
             )

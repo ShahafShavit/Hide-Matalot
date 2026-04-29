@@ -101,7 +101,6 @@
         }
 
         function handleDownloadFile(request, { sendResponse, operationId }) {
-            // TODO: Move file handling to a seperate js file...
             try {
                 const { fileType, fileName, data } = request;
                 switch (fileType) { 
