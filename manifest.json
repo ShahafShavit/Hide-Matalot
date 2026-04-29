@@ -4,8 +4,8 @@
   "version": "1.3.3",
   "description": "מנהל מטלות למודל - הסתרת מטלות, התראות וסנכרון ליומן",
   "icons": {
-    "48": "hide48.png",
-    "128": "hide128.png"
+    "48": "a-cws-meta/48.png",
+    "128": "a-cws-meta/128.png"
   },
   "permissions": ["notifications", "alarms", "storage", "tabs", "downloads"],
     "background": {
