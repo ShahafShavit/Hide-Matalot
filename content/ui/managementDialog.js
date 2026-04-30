@@ -5,7 +5,8 @@
     const parser = () => globalThis.HideMatalotAssignmentsParser;
     const modal = () => globalThis.HideMatalotNotificationSettingsModal;
     const debug = () => globalThis.HideMatalotContentDebug;
-
+    const client = () => globalThis.HideMatalotRuntimeClient;
+    
     let managementPairs = [];
 
     function buildGoogleCalendarUrl(courseName, exerciseName, deadline, time) {
@@ -362,6 +363,52 @@
         });
         container.appendChild(closeButton);
 
+        const exportButton = document.createElement('button');
+        exportButton.type = 'button';
+        exportButton.className = 'hm-export-btn';
+        exportButton.innerHTML = '📥';
+        exportButton.title = 'ייצוא (CSV)'
+        exportButton.addEventListener('click', () => {
+            if (!managementPairs) {
+                return;
+            }
+
+            const noneHiddenMatalot = managementPairs.filter(
+                ({ uniqueKey, legacyKey }) => parser().resolveVisibilityFromState(currentState, uniqueKey, legacyKey) !== false
+            )
+            client().downloadMatalotCsv(noneHiddenMatalot)
+            
+        });
+        container.appendChild(exportButton);
+
+        const settingsShowCountdown = !!(await storage().getSetting('showCountdown'));
+        const countdownCheckboxContainer = document.createElement('div');
+        countdownCheckboxContainer.className = 'hm-countdown-checkbox-container';
+
+        const countdownCheckboxLabel = document.createElement('label');
+        countdownCheckboxLabel.innerText = 'ספירה לאחור';
+
+        const countdownCheckbox = document.createElement('input');
+        countdownCheckbox.type='checkbox';
+        countdownCheckbox.title='ספירה לאחור';
+        countdownCheckbox.checked = settingsShowCountdown
+        
+        countdownCheckboxContainer.appendChild(countdownCheckboxLabel)
+        countdownCheckboxContainer.appendChild(countdownCheckbox)
+        countdownCheckbox.addEventListener('change', (e) => {
+            const checked = e.target?.checked;
+            storage().saveSetting('showCountdown', checked);
+            if (checked)
+                showCountdown();
+            else {
+                const headerNodes = document.querySelectorAll('[data-timestamp].mt-3');
+                headerNodes?.forEach(el => el.dataset.mtCountdown = '');
+            }
+        });
+        container.appendChild(countdownCheckboxContainer);
+
+        
+        
         const mockBtn = document.createElement('button');
         mockBtn.type = 'button';
         mockBtn.id = 'add-mock-assignments-btn';
@@ -533,9 +580,23 @@
         };
     }
 
+    function showCountdown() {
+        const headerNodes = document.querySelectorAll('[data-timestamp].mt-3');
+        headerNodes.forEach(el => {
+            try {
+                const diff = parseInt(el.dataset.timestamp) - Math.ceil(Date.now() / 1000);
+                const days = Math.ceil(diff / (60 * 60 * 24));
+                el.dataset.mtCountdown = 'ימים: ' + (days < 0 ? 0 : days);
+            } catch (error) {
+                console.error(error);
+            }
+        });
+    }
+
     globalThis.HideMatalotManagementDialog = {
         addManagementButton,
         activateManagementButton,
-        jumpToTimelineSection
+        jumpToTimelineSection,
+        showCountdown
     };
 })();

@@ -15,7 +15,8 @@
             setScheduledNotifications,
             scheduleAlarm,
             removeScheduledNotification,
-            createDesktopNotification
+            createDesktopNotification,
+            saveFile
         } = deps;
 
         function handleCreateNotification(request, { sendResponse, operationId }) {
@@ -99,11 +100,35 @@
             return true;
         }
 
+        function handleDownloadFile(request, { sendResponse, operationId }) {
+            try {
+                const { fileType, fileName, data } = request;
+                switch (fileType) { 
+                    case 'csv':
+                        const url = "data:text/csv;charset=utf-8,\ufeff" + encodeURIComponent(data);
+                        saveFile(url, fileName)
+                        break;
+                
+                    default:
+                        throw new Error("File type not supported.");
+                        break;
+                }
+                
+                sendResponse(responseSuccess());
+            } catch (error) {
+                console.error('[Background Worker]', operationId, 'Failed to save file:', error);
+
+                sendResponse(responseError(error, operationId))
+            }
+            
+        }
+
         return {
             [MESSAGE_TYPES.CREATE_NOTIFICATION]: handleCreateNotification,
             [MESSAGE_TYPES.SCHEDULE_ASSIGNMENT_NOTIFICATION]: handleScheduleAssignmentNotification,
             [MESSAGE_TYPES.DELETE_ASSIGNMENT_NOTIFICATION]: handleDeleteAssignmentNotification,
-            [MESSAGE_TYPES.GET_SCHEDULED_NOTIFICATIONS]: handleGetScheduledNotifications
+            [MESSAGE_TYPES.GET_SCHEDULED_NOTIFICATIONS]: handleGetScheduledNotifications,
+            [MESSAGE_TYPES.DOWNLOAD_FILE]: handleDownloadFile
         };
     }
 

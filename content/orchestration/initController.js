@@ -123,7 +123,7 @@
     async function init() {
         try {
             management().addManagementButton();
-
+            
             const timeoutSeconds = await storage().getSetting('initWaitTime');
             const waitCapMs = Math.max(1000, (Number(timeoutSeconds) || 4) * 1000);
             const debugFromDb = await storage().getSetting('debug');
@@ -162,6 +162,9 @@
 
             debug().log('Activating management button...');
             management().activateManagementButton(pairs);
+
+            if(await storage().getSetting('showCountdown')) management().showCountdown();
+
         } catch (error) {
             console.error('Initialization error:', error);
             const button = document.getElementById('manage-pairs-button');

@@ -7,7 +7,7 @@
     "48": "a-cws-meta/48.png",
     "128": "a-cws-meta/128.png"
   },
-  "permissions": ["notifications", "alarms", "storage", "tabs"],
+  "permissions": ["notifications", "alarms", "storage", "tabs", "downloads"],
     "background": {
       "service_worker": "background.js"
     },

@@ -159,6 +159,29 @@
         }
     }
 
+    async function downloadMatalotCsv(pairs) {
+        const csvArr = [['קורס', 'מטלה', 'תאריך הגשה']];
+
+        pairs.forEach(({ courseName, exerciseName, item, uniqueKey, legacyKey, deadline, time }) => {
+            const [hours, minutes] = time?.split(':');
+            const date = new Date(deadline * 1000);
+            if (hours)
+                date.setHours(date.getHours() + hours);
+            if (minutes)
+                date.setMinutes(date.getMinutes() + minutes);
+
+            csvArr.push(['"' + courseName.replace('"', '""') + '"', '"' + exerciseName + '"', date.toISOString()]);
+        });
+        const csvStr = csvArr.map(e => e.join(",")).join("\n");
+
+        const result = await sendRuntimeMessage({
+            type: 'DOWNLOAD_FILE',
+            fileType: 'csv',
+            fileName: `Assignments_${(new Date(Date.now())).toLocaleDateString('he-il')}.csv`,
+            data: csvStr
+        });
+    }
+
     globalThis.HideMatalotRuntimeClient = {
         sendRuntimeMessage,
         saveNotification,
@@ -166,6 +189,7 @@
         getNotificationsForAssignment,
         deleteNotification,
         cleanUpNotifications,
-        triggerChromeNotification
+        triggerChromeNotification,
+        downloadMatalotCsv
     };
 })();
